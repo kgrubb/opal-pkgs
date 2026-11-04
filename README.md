@@ -5,12 +5,13 @@ Newer upstream releases of the userspace on a GL.iNet Opal (GL-SFT1200) running 
 On the router:
 
 ```sh
-echo 'src/gz opal https://kgrubb.github.io/opal-pkgs' >> /etc/opkg/customfeeds.conf
+feed=/etc/opkg/customfeeds.conf
+grep -q 'src/gz opal https://kgrubb.github.io/opal-pkgs' "$feed" || echo 'src/gz opal https://kgrubb.github.io/opal-pkgs' >> "$feed"
 opkg update
-opkg upgrade
+opkg list-upgradable | awk '{print $1}' | xargs -r opkg upgrade
 ```
 
-`opkg upgrade` installs the newer build of every package the feed and the router already share. ssh, dns, and ntp restart when those packages update. Reconnect ssh after it finishes.
+Firmware 4.8.3 opkg upgrades the packages you name. `opkg list-upgradable` prints the ones this feed and the router already share that have a newer build, and `xargs` passes those names to `opkg upgrade`. ssh, dns, and ntp restart when those packages update. Reconnect ssh after it finishes.
 
 Every published ipk stays in the feed. Reinstall an older file by URL with `--force-downgrade`.
 
