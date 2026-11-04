@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Write the opkg Packages index for packages/*.ipk."""
+"""Write the opkg Packages index for every ipk in a feed directory."""
 import gzip
 import hashlib
 import io
+import sys
 import tarfile
 from pathlib import Path
 
-ROOT = Path(__file__).parent / "packages"
 ARCHES = {"all", "mips_siflower"}
 
 
@@ -44,8 +44,9 @@ def stanza(ipk):
     return f"{text}\nFilename: {ipk.name}\nSize: {len(raw)}\nSHA256sum: {hashlib.sha256(raw).hexdigest()}\n"
 
 
-index = "\n".join(stanza(p) for p in sorted(ROOT.glob("*.ipk")))
+feed = Path(sys.argv[1])
+index = "\n".join(stanza(p) for p in sorted(feed.glob("*.ipk")))
 if not index:
-    raise SystemExit(f"no ipks in {ROOT}")
-(ROOT / "Packages").write_text(index)
-(ROOT / "Packages.gz").write_bytes(gzip.compress(index.encode(), mtime=0))
+    raise SystemExit(f"no ipks in {feed}")
+(feed / "Packages").write_text(index)
+(feed / "Packages.gz").write_bytes(gzip.compress(index.encode(), mtime=0))

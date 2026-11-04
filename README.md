@@ -10,7 +10,21 @@ opkg upgrade ethtool
 ```
 
 Upgrade by package name. A bare `opkg upgrade` also replaces running services
-such as `dropbear` and `dnscrypt-proxy2`.
+such as `dropbear` and `dnscrypt-proxy2`. Every published ipk stays in the
+feed, so an older build can be reinstalled by URL with `--force-downgrade`.
 
-To publish a package, add its `.ipk` to `packages/` and push to `main`. The
-workflow rebuilds `Packages.gz` and deploys the feed.
+## How it works
+
+- `versions` pins each upstream source by version and SHA-256.
+- `build.sh` cross-compiles static binaries against musl 1.1.20, which keeps
+  the 32-bit `time_t` that the router's Linux 4.14 kernel needs. `pack.py`
+  turns them into ipks in `out/`.
+- `.github/workflows/feed.yml` checks upstream every Monday. When a release
+  is newer, it builds it, commits the new pin to `main` once the build passes,
+  and publishes the new ipks.
+- The `feed` branch is what GitHub Pages serves. It is append-only: CI adds
+  new filenames and never replaces or removes one.
+
+Changing a package's files without an upstream release needs a bump in the
+`release` column. Otherwise the filename already exists and the build is not
+published.

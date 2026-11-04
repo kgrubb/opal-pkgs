@@ -1,0 +1,3 @@
+#!/bin/sh
+# -modd-spreg matches the o32 hard-float ABI that musl 1.1.20's setjmp uses.
+exec "$ZIG" cc -target mipsel-linux-musl -modd-spreg "$@"

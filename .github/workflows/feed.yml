@@ -1,0 +1,76 @@
+name: feed
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "23 9 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      UPDATE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+      PUBLISH: ${{ github.event_name != 'pull_request' }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: ${{ env.UPDATE }}
+      - name: Check upstream releases
+        if: env.UPDATE == 'true'
+        run: python3 update.py | tee "$RUNNER_TEMP/changes"
+      - run: ./build.sh
+      - name: Commit version bumps
+        if: env.UPDATE == 'true'
+        run: |
+          git diff --quiet versions && exit 0
+          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            commit -m "chore: update packages" -m "$(cat "$RUNNER_TEMP/changes")" versions
+          git push
+      - uses: actions/checkout@v7.0.1
+        if: env.PUBLISH == 'true'
+        with:
+          ref: feed
+          path: feed
+          persist-credentials: true
+      # The feed is append-only: a published filename is never replaced or removed.
+      - name: Publish new ipks
+        if: env.PUBLISH == 'true'
+        run: |
+          for f in out/*.ipk; do [ -e "feed/${f##*/}" ] || cp "$f" feed/; done
+          python3 index.py feed
+          cd feed
+          git add -A
+          git diff --cached --quiet && exit 0
+          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            commit -m "chore: publish $(git diff --cached --name-only -- '*.ipk' | xargs)"
+          git push
+      - uses: actions/upload-pages-artifact@v5.0.0
+        if: env.PUBLISH == 'true'
+        with:
+          path: feed
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v5.0.1

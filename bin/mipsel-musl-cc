@@ -1,0 +1,16 @@
+#!/bin/sh
+# Compile and statically link against the musl 1.1.20 sysroot.
+link=1
+for a; do
+  shift
+  case $a in
+    -c|-E|-S|-M|-MM) link=0 ;;
+    -lc|-lm|-lpthread|-ldl|-lrt|-lgcc|-lgcc_eh) continue ;;
+  esac
+  set -- "$@" "$a"
+done
+if [ "$link" = 0 ]; then
+  exec mipsel-cc -nostdinc -isystem "$SYSROOT/include" "$@"
+fi
+exec mipsel-cc -nostdinc -isystem "$SYSROOT/include" -static -nostdlib -s \
+  "$SYSROOT/lib/crt1.o" "$SYSROOT/lib/crti.o" "$@" "$SYSROOT/lib/libc.a" "$SYSROOT/lib/crtn.o"

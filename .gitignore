@@ -1,1 +1,4 @@
-packages/Packages*
+.cache/
+work/
+out/
+feed/
