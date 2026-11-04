@@ -53,8 +53,8 @@ if [ ! -f "$SYSROOT/lib/libc.a" ]; then
     make install
   )
 fi
-printf '%s\n' '#include <time.h>' 'int time_t_is_32bit[1/(sizeof(time_t)==4)];' |
-  $CC -x c -c -o /dev/null -
+printf '%s\n' '#include <time.h>' 'int time_t_is_32bit[1/(sizeof(time_t)==4)];' > "$WORK/time_t.c"
+$CC -c -o "$WORK/time_t.o" "$WORK/time_t.c"
 
 unpack dropbear
 (
