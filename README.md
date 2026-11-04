@@ -10,7 +10,7 @@ opkg upgrade ethtool
 ```
 
 Upgrade by package name. A bare `opkg upgrade` also replaces running services
-such as `dropbear`, `dnsmasq-full`, `chrony`, and `dnscrypt-proxy2`. Every published ipk stays in the
+such as `dropbear`, `dnsmasq-full`, `chrony`, `snmpd`, and `dnscrypt-proxy2`. Every published ipk stays in the
 feed, so an older build can be reinstalled by URL with `--force-downgrade`.
 
 ## How it works
@@ -23,8 +23,9 @@ feed, so an older build can be reinstalled by URL with `--force-downgrade`.
   must carry a valid signature from the maintainer key in `keys/`. The CA
   bundle, wireguard-tools, and softflowd have no upstream signature and rely on HTTPS.
   softflowd links its own libpcap, so the router's libpcap package is left as it is.
-  curl, dnsmasq, and chrony link their libraries in the same way, so the
-  router's libcurl, libnettle, libubus, and libcap packages stay for GL programs.
+  curl, dnsmasq, chrony, and snmpd link their libraries in the same way, so the
+  router's libcurl, libnettle, libubus, libcap, and libnetsnmp packages stay for GL programs.
+  snmpd carries OpenWrt's 802.11 MIB patch, pinned to a commit in openwrt/packages.
   One package failing leaves the others to publish, and the run goes red.
 - The `feed` branch is what GitHub Pages serves. It is append-only: CI adds
   new filenames and never replaces or removes one. A rebuilt ipk whose bytes
