@@ -50,6 +50,31 @@ Filename: ca-certificates_20261020-2_all.ipk
 Size: 113333
 SHA256sum: df7ce88cb0aef2c713d90eb2bfd123463ab90fdb6c7e11a3a3c181015785c162
 
+Package: chrony
+Version: 4.9-1
+Depends: libc
+Require-User: chrony=323:chrony=323
+License: GPL-2.0
+Section: net
+Description: Static chrony for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 706344
+Filename: chrony_4.9-1_mips_siflower.ipk
+Size: 299511
+SHA256sum: c338519b9171ff3683089e6b6d49dd0cc81e3f6143802f8488fd757bdd0453a8
+
+Package: curl
+Version: 8.23.0-1
+Depends: libc, ca-bundle
+License: MIT
+Section: net
+Description: Static curl with mbedTLS for the GL-SFT1200. The system libcurl stays for GL programs.
+Architecture: mips_siflower
+Installed-Size: 1782844
+Filename: curl_8.23.0-1_mips_siflower.ipk
+Size: 741427
+SHA256sum: 2843374ebe21d922dc319a489037c3165e34033c39334b50aa11ce2fb3b9f73d
+
 Package: dnscrypt-proxy2
 Version: 2.1.20-1
 Depends: libc, ca-bundle
@@ -75,6 +100,20 @@ Installed-Size: 14631047
 Filename: dnscrypt-proxy2_2.1.20-2_mips_siflower.ipk
 Size: 4775398
 SHA256sum: df24aa9f333f8e9d1fe16495b5b24c790393874093d6675c22f92d48c8dea6b7
+
+Package: dnsmasq-full
+Version: 2.93-1
+Depends: libc, kmod-ipt-ipset
+Provides: dnsmasq
+Require-User: dnsmasq=453:dnsmasq=453 dnsmasq_vpn=456:dnsmasq=453
+License: GPL-2.0
+Section: net
+Description: Static dnsmasq with DHCP, DNSSEC, ipset, conntrack and ubus for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 1323324
+Filename: dnsmasq-full_2.93-1_mips_siflower.ipk
+Size: 620493
+SHA256sum: 5e4343589074ee0b91bdef76f83726af3117f8fc5ea20c659d8a63f52c1788d2
 
 Package: dropbear
 Version: 2026.94-1
