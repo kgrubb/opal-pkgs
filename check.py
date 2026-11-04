@@ -90,9 +90,32 @@ def test_ca_releases_stay_separate():
 
 
 def test_build_keeps_set_e():
-    text = Path(__file__).with_name("build.sh").read_text()
-    if "if ! (" in text:
-        raise SystemExit("a package build is inside an if test, so set -e does not apply")
+    root = Path(__file__).parent
+    texts = [root.joinpath("build.sh").read_text()]
+    texts += [path.read_text() for path in root.joinpath("pkg").glob("*/build.sh")]
+    for text in texts:
+        if "if ! (" in text:
+            raise SystemExit("a package build is inside an if test, so set -e does not apply")
+
+
+def test_packages_are_discovered():
+    found = update.load_latest()
+    dirs = sorted(path.name for path in Path(__file__).parent.joinpath("pkg").iterdir() if path.is_dir())
+    if sorted(found) != dirs:
+        raise SystemExit(f"{sorted(found)} != {dirs}")
+    if found["ca-bundle"][1] != r"cacert-(\d{4}-\d{2}-\d{2})\.pem" or found["ca-bundle"][2] is not None:
+        raise SystemExit(found["ca-bundle"])
+
+
+def test_run_pkg_stops():
+    bad = Path(tempfile.mkdtemp()) / "bad.sh"
+    bad.write_text("echo start\nfalse\necho survived\n")
+    out = subprocess.run(
+        ["sh", str(Path(__file__).with_name("build.sh")), "--test-runner", str(bad)],
+        check=True, capture_output=True, text=True,
+    )
+    if out.stdout.splitlines() != ["start", "probe"] or "survived" in out.stderr:
+        raise SystemExit(repr(out.stdout) + repr(out.stderr))
 
 
 def test_restore():
@@ -114,5 +137,7 @@ if __name__ == "__main__":
     test_settle()
     test_ca_releases_stay_separate()
     test_build_keeps_set_e()
+    test_packages_are_discovered()
+    test_run_pkg_stops()
     test_restore()
     print("ok")

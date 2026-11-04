@@ -16,10 +16,14 @@ Every published ipk stays in the feed. Reinstall an older file by URL with `--fo
 
 ## How it works
 
-- `versions` pins each upstream source by version and SHA-256.
-- `build.sh` cross-compiles static binaries against musl 1.1.20, which keeps
-  the 32-bit `time_t` that the router's Linux 4.14 kernel needs. `pack.py`
-  turns them into ipks in `out/`.
+- `versions` pins each upstream source by version and SHA-256. A package you
+  ship is a directory `pkg/<name>/`: `build.sh` compiles it and `pack.py` lists
+  the files in the ipk plus where the next release is announced. The top-level
+  `build.sh` runs every directory and `pack.py` writes `out/`. Libraries that
+  are only linked in stay as rows in `versions` and are unpacked by the package
+  that uses them.
+- The cross compile uses musl 1.1.20, which keeps the 32-bit `time_t` the
+  router's Linux 4.14 kernel needs.
 - `.github/workflows/feed.yml` checks upstream every Monday. A new release
   must carry a valid signature from the maintainer key in `keys/`. The CA
   bundle, wireguard-tools, and softflowd have no upstream signature and rely on HTTPS.

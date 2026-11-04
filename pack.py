@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Pack the trees built by build.sh into replacement ipks in out/."""
 import gzip
+import importlib.util
 import io
 import re
 import struct
@@ -128,205 +129,32 @@ def pack(package, pin, arch, control, entries, conffiles=()):
     path.write_bytes(blob)
     print(path.name)
 
+def load_recipes():
+    """Each shipped package is pkg/<pin>/pack.py."""
+    found = []
+    for directory in sorted(ROOT.joinpath("pkg").iterdir()):
+        script = directory / "pack.py"
+        if not script.is_file():
+            continue
+        spec = importlib.util.spec_from_file_location("opal_" + directory.name.replace("-", "_"), script)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        found.append((directory.name, mod))
+    return found
+
 
 def main():
     OUT.mkdir(exist_ok=True)
-    FAILED = set((WORK / "failed").read_text().split()) if (WORK / "failed").exists() else set()
-    if "dropbear" not in FAILED:
-        dropbear = elf(tree("dropbear") / "dropbearmulti")
-        if f"SSH-2.0-dropbear_{version('dropbear')}".encode() not in dropbear:
-            raise SystemExit("dropbear banner does not match the pinned version")
-        pack("dropbear", "dropbear", "mips_siflower", """
-    Depends: libc
-    Alternatives: 100:/usr/bin/ssh:/usr/sbin/dropbear, 100:/usr/bin/scp:/usr/sbin/dropbear
-    License: MIT
-    Section: net
-    Description: Static Dropbear SSH server and client for the GL-SFT1200
-    """, [
-        ("usr/sbin/dropbear", dropbear, 0o755),
-        ("usr/bin/dbclient", "../sbin/dropbear"),
-        ("usr/bin/dropbearkey", "../sbin/dropbear"),
-        ("etc/init.d/dropbear", (FILES / "dropbear.init").read_bytes(), 0o755),
-        ("etc/config/dropbear", (FILES / "dropbear.config").read_bytes(), 0o644),
-        # Empty like stock: opkg deletes an owned file the new package omits, conffile or not.
-        ("etc/dropbear/dropbear_rsa_host_key", b"", 0o600),
-    ], ["/etc/dropbear/dropbear_rsa_host_key", "/etc/config/dropbear"])
-
-    if "ethtool" not in FAILED:
-        pack("ethtool", "ethtool", "mips_siflower", """
-    Depends: libc
-    License: GPL-2.0
-    Section: net
-    Description: Static ethtool (ioctl interface) for the GL-SFT1200
-    """, [("usr/sbin/ethtool", elf(tree("ethtool") / "ethtool"), 0o755)])
-
-    if "i2c-tools" not in FAILED:
-        pack("i2c-tools", "i2c-tools", "mips_siflower", """
-    Depends: libc
-    License: GPL-2.0
-    Section: utils
-    Description: Static i2c-tools for the GL-SFT1200
-    """, [
-        (f"usr/sbin/{tool}", elf(tree("i2c-tools") / "tools" / tool), 0o755)
-        for tool in ("i2cdetect", "i2cdump", "i2cget", "i2cset", "i2ctransfer")
-    ])
-
-    if "sudo" not in FAILED:
-        sudo = tree("sudo")
-        pack("sudo", "sudo", "mips_siflower", """
-    Depends: libc
-    License: ISC
-    Section: admin
-    Description: Static sudo with built-in sudoers for the GL-SFT1200
-    """, [
-        ("usr/bin/sudo", elf(sudo / "src" / "sudo"), 0o4755),
-        ("usr/sbin/visudo", elf(sudo / "plugins" / "sudoers" / "visudo"), 0o755),
-        ("etc/sudoers", (FILES / "sudoers").read_bytes(), 0o440),
-        ("etc/init.d/sudo", (FILES / "sudo.init").read_bytes(), 0o755),
-        ("lib/upgrade/keep.d/sudo", (FILES / "sudo.keep").read_bytes(), 0o644),
-    ], ["/etc/sudoers"])
-
-    if "dnscrypt-proxy" not in FAILED:
-        dnscrypt = tree("dnscrypt-proxy")
-        lists = WORK / "dnscrypt-lists"
-        pack("dnscrypt-proxy2", "dnscrypt-proxy", "mips_siflower", """
-    Depends: libc, ca-bundle
-    Conflicts: dnscrypt-proxy
-    License: ISC
-    Section: net
-    Description: dnscrypt-proxy for the GL-SFT1200
-    """, [
-        ("usr/sbin/dnscrypt-proxy", elf(dnscrypt / "dnscrypt-proxy"), 0o755),
-        ("etc/init.d/dnscrypt-proxy", (FILES / "dnscrypt-proxy.init").read_bytes(), 0o755),
-        ("etc/dnscrypt-proxy2/dnscrypt-proxy.toml", (FILES / "dnscrypt-proxy.toml").read_bytes(), 0o644),
-        ("etc/dnscrypt-proxy2/blocked-names.txt", (dnscrypt / "example-blocked-names.txt").read_bytes(), 0o644),
-    ] + [
-        (f"etc/dnscrypt-proxy2/{f.name}", f.read_bytes(), 0o644) for f in sorted(lists.iterdir())
-    ], ["/etc/dnscrypt-proxy2/dnscrypt-proxy.toml"])
-
-    if "wireguard-tools" not in FAILED:
-        pack("wireguard-tools", "wireguard-tools", "mips_siflower", """
-    Depends: libc, kmod-wireguard
-    License: GPL-2.0
-    Section: net
-    Description: Static wg for the GL-SFT1200. The kernel module stays the stock one.
-    """, [
-        ("usr/bin/wg", elf(tree("wireguard-tools") / "src" / "wg"), 0o755),
-        ("usr/bin/wireguard_watchdog", (FILES / "wireguard_watchdog").read_bytes(), 0o755),
-        ("lib/netifd/proto/wireguard.sh", (FILES / "wireguard.sh").read_bytes(), 0o755),
-    ])
-
-    if "softflowd" not in FAILED:
-        built = tree("softflowd")
-        softflowd = elf(built / "softflowd")
-        if version("softflowd").encode() not in softflowd:
-            raise SystemExit("softflowd version string does not match the pin")
-        pack("softflowd", "softflowd", "mips_siflower", """
-    Depends: libc
-    License: BSD-2-Clause
-    Section: net
-    Description: Static softflowd for the GL-SFT1200. libpcap is linked in, so the system libpcap stays.
-    """, [
-        ("usr/sbin/softflowd", softflowd, 0o755),
-        ("usr/sbin/softflowctl", elf(built / "softflowctl"), 0o755),
-        ("etc/init.d/softflowd", (FILES / "softflowd.init").read_bytes(), 0o755),
-        ("etc/config/softflowd", (FILES / "softflowd.config").read_bytes(), 0o644),
-    ], ["/etc/config/softflowd"])
-
-    if "curl" not in FAILED:
-        pack("curl", "curl", "mips_siflower", """
-    Depends: libc, ca-bundle
-    License: MIT
-    Section: net
-    Description: Static curl with mbedTLS for the GL-SFT1200. The system libcurl stays for GL programs.
-    """, [("usr/bin/curl", elf(tree("curl") / "src" / "curl"), 0o755)])
-
-    if "dnsmasq" not in FAILED:
-        pack("dnsmasq-full", "dnsmasq", "mips_siflower", """
-    Depends: libc, kmod-ipt-ipset
-    Provides: dnsmasq
-    Require-User: dnsmasq=453:dnsmasq=453 dnsmasq_vpn=456:dnsmasq=453
-    License: GPL-2.0
-    Section: net
-    Description: Static dnsmasq with DHCP, DNSSEC, ipset, conntrack and ubus for the GL-SFT1200
-    """, [
-        ("usr/sbin/dnsmasq", elf(tree("dnsmasq") / "src" / "dnsmasq"), 0o755),
-        ("etc/init.d/dnsmasq", (FILES / "dnsmasq.init").read_bytes(), 0o755),
-        ("etc/config/dhcp", (FILES / "dhcp.config").read_bytes(), 0o600),
-        ("etc/dnsmasq.conf", (FILES / "dnsmasq.conf").read_bytes(), 0o600),
-        ("etc/hotplug.d/ntp/25-dnsmasqsec", (FILES / "dnsmasq.ntp-hotplug").read_bytes(), 0o600),
-        ("lib/netifd/dhcplease", (FILES / "dhcplease").read_bytes(), 0o755),
-        ("usr/lib/dnsmasq/dhcp-script.sh", (FILES / "dnsmasq-dhcp-script.sh").read_bytes(), 0o755),
-        ("usr/share/acl.d/dnsmasq_acl.json", (FILES / "dnsmasq_acl.json").read_bytes(), 0o644),
-        ("usr/share/dnsmasq/dhcpbogushostname.conf", (FILES / "dhcpbogushostname.conf").read_bytes(), 0o600),
-        ("usr/share/dnsmasq/rfc6761.conf", (FILES / "rfc6761.conf").read_bytes(), 0o600),
-        ("usr/share/dnsmasq/trust-anchors.conf", (tree("dnsmasq") / "trust-anchors.conf").read_bytes(), 0o600),
-    ], ["/etc/config/dhcp", "/etc/dnsmasq.conf"])
-
-    if "chrony" not in FAILED:
-        chronyd = elf(tree("chrony") / "chronyd")
-        if b"+PRIVDROP" not in chronyd:
-            raise SystemExit("chronyd was built without libcap and would stay root")
-        pack("chrony", "chrony", "mips_siflower", """
-    Depends: libc
-    Require-User: chrony=323:chrony=323
-    License: GPL-2.0
-    Section: net
-    Description: Static chrony for the GL-SFT1200
-    """, [
-        ("usr/sbin/chronyd", chronyd, 0o755),
-        ("usr/bin/chronyc", elf(tree("chrony") / "chronyc"), 0o755),
-        ("etc/init.d/chronyd", (FILES / "chronyd.init").read_bytes(), 0o755),
-        ("etc/hotplug.d/iface/20-chrony", (FILES / "chrony.hotplug").read_bytes(), 0o755),
-        ("etc/chrony/chrony.conf", (FILES / "chrony.conf").read_bytes(), 0o600),
-        ("etc/config/chrony", (FILES / "chrony.config").read_bytes(), 0o600),
-    ], ["/etc/chrony/chrony.conf", "/etc/config/chrony"])
-
-    if "net-snmp" not in FAILED:
-        snmpd = elf(tree("net-snmp") / "agent" / "snmpd")
-        if version("net-snmp").encode() not in snmpd or b"ieee802dot11" not in snmpd:
-            raise SystemExit("snmpd is the wrong version or lost the 802.11 MIB")
-        if b"/usr/local/" in snmpd:
-            raise SystemExit("snmpd would look for its config under /usr/local")
-        pack("snmpd", "net-snmp", "mips_siflower", """
-    Depends: libc
-    License: BSD-3-Clause
-    Section: net
-    Description: Static net-snmp agent for the GL-SFT1200
-    """, [
-        ("usr/sbin/snmpd", snmpd, 0o755),
-        ("etc/snmp/snmpd.conf", "/var/run/snmpd.conf"),
-        ("etc/config/snmpd", (FILES / "snmpd.config").read_bytes(), 0o644),
-        ("etc/init.d/snmpd", (FILES / "snmpd.init").read_bytes(), 0o755),
-    ], ["/etc/config/snmpd"])
-
-    if "ca-bundle" not in FAILED and "ca-certificates" not in FAILED:
-        pem = (ROOT / ".cache" / PINS["ca-bundle"][4].replace("{v}", version("ca-bundle")).rsplit("/", 1)[1]).read_bytes()
-        pack("ca-bundle", "ca-bundle", "all", """
-    Depends: libc
-    Provides: ca-certs
-    License: MPL-2.0
-    Section: base
-    Description: Mozilla CA bundle for the GL-SFT1200
-    """, [("etc/ssl/certs/ca-certificates.crt", pem, 0o644), ("etc/ssl/cert.pem", pem, 0o644)])
-
-        # curl's cacert.pem puts each Mozilla label above its certificate, underlined with '='
-        # and followed by '#' comment lines.
-        certs, hashes = [], {}
-        for label, cert in re.findall(rb"\n([^\n]+)\n=+\n(?:#[^\n]*\n)*(-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----)", pem, re.S):
-            name = re.sub(r"[^A-Za-z0-9._+-]", "_", label.decode().strip().replace(" ", "_")) + ".crt"
-            digest = subprocess.run(["openssl", "x509", "-noout", "-subject_hash"], input=cert, capture_output=True, check=True).stdout.decode().strip()
-            certs += [(f"etc/ssl/certs/{name}", cert + b"\n", 0o644), (f"etc/ssl/certs/{digest}.{hashes.get(digest, 0)}", name)]
-            hashes[digest] = hashes.get(digest, 0) + 1
-        if len(certs) != 2 * pem.count(b"-----BEGIN CERTIFICATE-----") or len({c[0] for c in certs}) != len(certs):
-            raise SystemExit("cacert.pem certificates did not all map to unique files")
-        pack("ca-certificates", "ca-certificates", "all", """
-    Depends: libc
-    Provides: ca-certs
-    License: MPL-2.0
-    Section: base
-    Description: Mozilla CA certificates for the GL-SFT1200
-    """, certs)
+    failed = set((WORK / "failed").read_text().split()) if (WORK / "failed").exists() else set()
+    # Recipes call these by name. They are defined in this file, so hand them over before packing.
+    shared = {
+        "FAILED": failed, "pack": pack, "elf": elf, "tree": tree, "version": version,
+        "FILES": FILES, "WORK": WORK, "ROOT": ROOT, "PINS": PINS,
+    }
+    for _name, mod in load_recipes():
+        for key, value in shared.items():
+            setattr(mod, key, value)
+        mod.pack_pkg()
 
 
 if __name__ == "__main__":
