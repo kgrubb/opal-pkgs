@@ -53,6 +53,19 @@ Filename: dropbear_2026.94-1_mips_siflower.ipk
 Size: 478292
 SHA256sum: 1b6f2e2b08c287a484bc3a4eeb1b1ac3abb6b4a1d83c5c452f9c9bda10b7e3a1
 
+Package: dropbear
+Version: 2026.94-2
+Depends: libc
+Alternatives: 100:/usr/bin/ssh:/usr/sbin/dropbear, 100:/usr/bin/scp:/usr/sbin/dropbear
+License: MIT
+Section: net
+Description: Static Dropbear SSH server and client for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 559699
+Filename: dropbear_2026.94-2_mips_siflower.ipk
+Size: 248556
+SHA256sum: 678d23467197a3f2eea902791c7be79878c7664a2eda97b7ab883f645232cd03
+
 Package: ethtool
 Version: 7.2-1
 Depends: libc
