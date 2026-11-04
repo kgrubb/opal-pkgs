@@ -233,6 +233,55 @@ def main():
         ("etc/config/softflowd", (FILES / "softflowd.config").read_bytes(), 0o644),
     ], ["/etc/config/softflowd"])
 
+    if "curl" not in FAILED:
+        pack("curl", "curl", "mips_siflower", """
+    Depends: libc, ca-bundle
+    License: MIT
+    Section: net
+    Description: Static curl with mbedTLS for the GL-SFT1200. The system libcurl stays for GL programs.
+    """, [("usr/bin/curl", elf(tree("curl") / "src" / "curl"), 0o755)])
+
+    if "dnsmasq" not in FAILED:
+        pack("dnsmasq-full", "dnsmasq", "mips_siflower", """
+    Depends: libc, kmod-ipt-ipset
+    Provides: dnsmasq
+    Require-User: dnsmasq=453:dnsmasq=453 dnsmasq_vpn=456:dnsmasq=453
+    License: GPL-2.0
+    Section: net
+    Description: Static dnsmasq with DHCP, DNSSEC, ipset, conntrack and ubus for the GL-SFT1200
+    """, [
+        ("usr/sbin/dnsmasq", elf(tree("dnsmasq") / "src" / "dnsmasq"), 0o755),
+        ("etc/init.d/dnsmasq", (FILES / "dnsmasq.init").read_bytes(), 0o755),
+        ("etc/config/dhcp", (FILES / "dhcp.config").read_bytes(), 0o600),
+        ("etc/dnsmasq.conf", (FILES / "dnsmasq.conf").read_bytes(), 0o600),
+        ("etc/hotplug.d/ntp/25-dnsmasqsec", (FILES / "dnsmasq.ntp-hotplug").read_bytes(), 0o600),
+        ("lib/netifd/dhcplease", (FILES / "dhcplease").read_bytes(), 0o755),
+        ("usr/lib/dnsmasq/dhcp-script.sh", (FILES / "dnsmasq-dhcp-script.sh").read_bytes(), 0o755),
+        ("usr/share/acl.d/dnsmasq_acl.json", (FILES / "dnsmasq_acl.json").read_bytes(), 0o644),
+        ("usr/share/dnsmasq/dhcpbogushostname.conf", (FILES / "dhcpbogushostname.conf").read_bytes(), 0o600),
+        ("usr/share/dnsmasq/rfc6761.conf", (FILES / "rfc6761.conf").read_bytes(), 0o600),
+        ("usr/share/dnsmasq/trust-anchors.conf", (tree("dnsmasq") / "trust-anchors.conf").read_bytes(), 0o600),
+    ], ["/etc/config/dhcp", "/etc/dnsmasq.conf"])
+
+    if "chrony" not in FAILED:
+        chronyd = elf(tree("chrony") / "chronyd")
+        if b"+PRIVDROP" not in chronyd:
+            raise SystemExit("chronyd was built without libcap and would stay root")
+        pack("chrony", "chrony", "mips_siflower", """
+    Depends: libc
+    Require-User: chrony=323:chrony=323
+    License: GPL-2.0
+    Section: net
+    Description: Static chrony for the GL-SFT1200
+    """, [
+        ("usr/sbin/chronyd", chronyd, 0o755),
+        ("usr/bin/chronyc", elf(tree("chrony") / "chronyc"), 0o755),
+        ("etc/init.d/chronyd", (FILES / "chronyd.init").read_bytes(), 0o755),
+        ("etc/hotplug.d/iface/20-chrony", (FILES / "chrony.hotplug").read_bytes(), 0o755),
+        ("etc/chrony/chrony.conf", (FILES / "chrony.conf").read_bytes(), 0o600),
+        ("etc/config/chrony", (FILES / "chrony.config").read_bytes(), 0o600),
+    ], ["/etc/chrony/chrony.conf", "/etc/config/chrony"])
+
     if "cacert" not in FAILED:
         pem = (ROOT / ".cache" / PINS["cacert"][4].replace("{v}", version("cacert")).rsplit("/", 1)[1]).read_bytes()
         pack("ca-bundle", "cacert", "all", """

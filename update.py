@@ -23,6 +23,11 @@ LATEST = {
     "wireguard-tools": ("https://github.com/WireGuard/wireguard-tools/tags", r"v(1\.0\.\d+)", None),
     # The tag archive has no maintainer signature. libpcap is pinned in versions and linked in.
     "softflowd": ("https://github.com/irino/softflowd/tags", r"softflowd-v(\d+\.\d+\.\d+)", None),
+    # mbedTLS, nettle, libcap, libubox, ubus and the netfilter libraries are pinned in versions and linked in.
+    "curl": ("https://curl.se/download/", r"curl-(\d+\.\d+\.\d+)\.tar\.xz", ".asc"),
+    "dnsmasq": ("https://thekelleys.org.uk/dnsmasq/", r"dnsmasq-(\d+\.\d+)\.tar\.xz", ".asc"),
+    "chrony": ("https://chrony-project.org/download.html", r"chrony-(\d+\.\d+(?:\.\d+)?)\.tar\.gz",
+               "https://chrony-project.org/releases/chrony-{v}-tar-gz-asc.txt"),
     # curl.se publishes no signature for cacert.pem, so HTTPS is the only check.
     "cacert": ("https://curl.se/docs/caextract.html", r"cacert-(\d{4}-\d{2}-\d{2})\.pem", None),
 }
@@ -45,7 +50,7 @@ def verify(name, url, data, suffix, fetch):
     with tempfile.TemporaryDirectory() as tmp:
         src, sig = Path(tmp, "src"), Path(tmp, "sig")
         src.write_bytes(data)
-        sig.write_bytes(fetch(url + suffix))
+        sig.write_bytes(fetch(suffix if suffix.startswith("https://") else url + suffix))
         if suffix == ".minisig":
             cmd = ["minisign", "-Vq", "-p", ROOT / "keys" / f"{name}.pub", "-m", src, "-x", sig]
         else:
@@ -71,7 +76,7 @@ def apply(lines, fetch, latest=None):
             newest = max(found + [current], key=key)
             data = fetch(url.replace("{v}", newest))
             if suffix:
-                verify(name, url.replace("{v}", newest), data, suffix, fetch)
+                verify(name, url.replace("{v}", newest), data, suffix.replace("{v}", newest), fetch)
             sha = hashlib.sha256(data).hexdigest()
             if newest == current:
                 if sha != pinned:
