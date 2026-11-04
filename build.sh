@@ -288,6 +288,7 @@ if ! (
   if [ ! -x agent/snmpd ]; then
     [ -f agent/mibgroup/ieee802dot11.c ] || patch -p1 < "$wifi" || exit 1
     CFLAGS="-Os $kinc" CPPFLAGS="-idirafter $WORK/compat" ./configure --host=mipsel-linux-musl CC=$CC \
+      --prefix=/usr --sysconfdir=/etc --localstatedir=/var \
       --disable-shared --enable-static --enable-mfd-rewrites --enable-ipv6 \
       --with-endianness=little --with-persistent-directory=/usr/lib/snmp/ --with-mnttab=/etc/mtab \
       --with-default-snmp-version=1 --with-sys-contact=root@localhost --with-sys-location=Unknown \
