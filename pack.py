@@ -6,6 +6,7 @@ import re
 import struct
 import subprocess
 import tarfile
+import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).parent
@@ -69,117 +70,197 @@ def tgz(entries):
     return buf.getvalue()
 
 
-def ar(members):
-    out = b"!<arch>\n"
-    for name, data in members:
-        out += f"{name:<16}{0:<12}{0:<6}{0:<6}{0o100644:<8o}{len(data):<10}`\n".encode()
-        out += data + (b"\n" if len(data) % 2 else b"")
-    return out
+def ipk(members):
+    """This opkg is the 2017 one and installs the gzip tar its own packages use."""
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz, tarfile.open(fileobj=gz, mode="w") as tf:
+        for name, data in members:
+            info = tarfile.TarInfo("./" + name)
+            info.size, info.mode = len(data), 0o644
+            info.uname = info.gname = "root"
+            tf.addfile(info, io.BytesIO(data))
+    return buf.getvalue()
+
+
+def set_release(pin, release):
+    PINS[pin][2] = release
+    lines = (ROOT / "versions").read_text().splitlines()
+    for i, line in enumerate(lines):
+        cols = line.split("\t")
+        if cols and cols[0] == pin:
+            cols[2] = release
+            lines[i] = "\t".join(cols)
+    (ROOT / "versions").write_text("\n".join(lines) + "\n")
+
+
+def settle(feed, release, name_for, blob_for):
+    """Bump the release while the feed already has that filename with different bytes."""
+    start = int(release)
+    while True:
+        blob = blob_for(release)
+        dest = feed / name_for(release)
+        if not dest.exists() or dest.read_bytes() == blob:
+            return release, blob
+        nxt = int(release) + 1
+        if nxt > start + 20:
+            raise SystemExit(f"{dest.name}: release bump did not settle")
+        release = str(nxt)
 
 
 def pack(package, pin, arch, control, entries, conffiles=()):
-    full = f"{version(pin).replace('-', '')}-{PINS[pin][2]}"
-    size = sum(len(e[1]) for e in entries if len(e) == 3)
-    control = f"Package: {package}\nVersion: {full}\n{control.strip()}\nArchitecture: {arch}\nInstalled-Size: {size}\n"
-    meta = [("control", control.encode(), 0o644), ("postinst", POSTINST, 0o755), ("prerm", PRERM, 0o755)]
-    if conffiles:
-        meta.append(("conffiles", "".join(f"{c}\n" for c in conffiles).encode(), 0o644))
-    path = OUT / f"{package}_{full}_{arch}.ipk"
-    path.write_bytes(ar([("debian-binary", b"2.0\n"), ("control.tar.gz", tgz(meta)), ("data.tar.gz", tgz(entries))]))
+    def name_for(rel):
+        return f"{package}_{version(pin).replace('-', '')}-{rel}_{arch}.ipk"
+
+    def blob_for(rel):
+        full = f"{version(pin).replace('-', '')}-{rel}"
+        size = sum(len(e[1]) for e in entries if len(e) == 3)
+        body = f"Package: {package}\nVersion: {full}\n{textwrap.dedent(control).strip()}\nArchitecture: {arch}\nInstalled-Size: {size}\n"
+        meta = [("control", body.encode(), 0o644), ("postinst", POSTINST, 0o755), ("prerm", PRERM, 0o755)]
+        if conffiles:
+            meta.append(("conffiles", "".join(f"{c}\n" for c in conffiles).encode(), 0o644))
+        return ipk([("debian-binary", b"2.0\n"), ("data.tar.gz", tgz(entries)), ("control.tar.gz", tgz(meta))])
+
+    release, blob = settle(ROOT / "feed", PINS[pin][2], name_for, blob_for)
+    if release != PINS[pin][2]:
+        print(f"{pin} release -> {release}")
+        set_release(pin, release)
+    path = OUT / name_for(release)
+    path.write_bytes(blob)
     print(path.name)
 
 
-OUT.mkdir(exist_ok=True)
-dropbear = elf(tree("dropbear") / "dropbearmulti")
-if f"SSH-2.0-dropbear_{version('dropbear')}".encode() not in dropbear:
-    raise SystemExit("dropbear banner does not match the pinned version")
-pack("dropbear", "dropbear", "mips_siflower", """
-Depends: libc
-Alternatives: 100:/usr/bin/ssh:/usr/sbin/dropbear, 100:/usr/bin/scp:/usr/sbin/dropbear
-License: MIT
-Section: net
-Description: Static Dropbear SSH server and client for the GL-SFT1200
-""", [
-    ("usr/sbin/dropbear", dropbear, 0o755),
-    ("usr/bin/dbclient", "../sbin/dropbear"),
-    ("usr/bin/dropbearkey", "../sbin/dropbear"),
-    ("etc/init.d/dropbear", (FILES / "dropbear.init").read_bytes(), 0o755),
-    ("etc/config/dropbear", (FILES / "dropbear.config").read_bytes(), 0o644),
-    # Empty like stock: opkg deletes an owned file the new package omits, conffile or not.
-    ("etc/dropbear/dropbear_rsa_host_key", b"", 0o600),
-], ["/etc/dropbear/dropbear_rsa_host_key", "/etc/config/dropbear"])
+def main():
+    OUT.mkdir(exist_ok=True)
+    FAILED = set((WORK / "failed").read_text().split()) if (WORK / "failed").exists() else set()
+    if "dropbear" not in FAILED:
+        dropbear = elf(tree("dropbear") / "dropbearmulti")
+        if f"SSH-2.0-dropbear_{version('dropbear')}".encode() not in dropbear:
+            raise SystemExit("dropbear banner does not match the pinned version")
+        pack("dropbear", "dropbear", "mips_siflower", """
+    Depends: libc
+    Alternatives: 100:/usr/bin/ssh:/usr/sbin/dropbear, 100:/usr/bin/scp:/usr/sbin/dropbear
+    License: MIT
+    Section: net
+    Description: Static Dropbear SSH server and client for the GL-SFT1200
+    """, [
+        ("usr/sbin/dropbear", dropbear, 0o755),
+        ("usr/bin/dbclient", "../sbin/dropbear"),
+        ("usr/bin/dropbearkey", "../sbin/dropbear"),
+        ("etc/init.d/dropbear", (FILES / "dropbear.init").read_bytes(), 0o755),
+        ("etc/config/dropbear", (FILES / "dropbear.config").read_bytes(), 0o644),
+        # Empty like stock: opkg deletes an owned file the new package omits, conffile or not.
+        ("etc/dropbear/dropbear_rsa_host_key", b"", 0o600),
+    ], ["/etc/dropbear/dropbear_rsa_host_key", "/etc/config/dropbear"])
 
-pack("ethtool", "ethtool", "mips_siflower", """
-Depends: libc
-License: GPL-2.0
-Section: net
-Description: Static ethtool (ioctl interface) for the GL-SFT1200
-""", [("usr/sbin/ethtool", elf(tree("ethtool") / "ethtool"), 0o755)])
+    if "ethtool" not in FAILED:
+        pack("ethtool", "ethtool", "mips_siflower", """
+    Depends: libc
+    License: GPL-2.0
+    Section: net
+    Description: Static ethtool (ioctl interface) for the GL-SFT1200
+    """, [("usr/sbin/ethtool", elf(tree("ethtool") / "ethtool"), 0o755)])
 
-pack("i2c-tools", "i2c-tools", "mips_siflower", """
-Depends: libc
-License: GPL-2.0
-Section: utils
-Description: Static i2c-tools for the GL-SFT1200
-""", [
-    (f"usr/sbin/{tool}", elf(tree("i2c-tools") / "tools" / tool), 0o755)
-    for tool in ("i2cdetect", "i2cdump", "i2cget", "i2cset", "i2ctransfer")
-])
+    if "i2c-tools" not in FAILED:
+        pack("i2c-tools", "i2c-tools", "mips_siflower", """
+    Depends: libc
+    License: GPL-2.0
+    Section: utils
+    Description: Static i2c-tools for the GL-SFT1200
+    """, [
+        (f"usr/sbin/{tool}", elf(tree("i2c-tools") / "tools" / tool), 0o755)
+        for tool in ("i2cdetect", "i2cdump", "i2cget", "i2cset", "i2ctransfer")
+    ])
 
-sudo = tree("sudo")
-pack("sudo", "sudo", "mips_siflower", """
-Depends: libc
-License: ISC
-Section: admin
-Description: Static sudo with built-in sudoers for the GL-SFT1200
-""", [
-    ("usr/bin/sudo", elf(sudo / "src" / "sudo"), 0o4755),
-    ("usr/sbin/visudo", elf(sudo / "plugins" / "sudoers" / "visudo"), 0o755),
-    ("etc/sudoers", (FILES / "sudoers").read_bytes(), 0o440),
-    ("etc/init.d/sudo", (FILES / "sudo.init").read_bytes(), 0o755),
-    ("lib/upgrade/keep.d/sudo", (FILES / "sudo.keep").read_bytes(), 0o644),
-], ["/etc/sudoers"])
+    if "sudo" not in FAILED:
+        sudo = tree("sudo")
+        pack("sudo", "sudo", "mips_siflower", """
+    Depends: libc
+    License: ISC
+    Section: admin
+    Description: Static sudo with built-in sudoers for the GL-SFT1200
+    """, [
+        ("usr/bin/sudo", elf(sudo / "src" / "sudo"), 0o4755),
+        ("usr/sbin/visudo", elf(sudo / "plugins" / "sudoers" / "visudo"), 0o755),
+        ("etc/sudoers", (FILES / "sudoers").read_bytes(), 0o440),
+        ("etc/init.d/sudo", (FILES / "sudo.init").read_bytes(), 0o755),
+        ("lib/upgrade/keep.d/sudo", (FILES / "sudo.keep").read_bytes(), 0o644),
+    ], ["/etc/sudoers"])
 
-dnscrypt = tree("dnscrypt-proxy")
-lists = WORK / "dnscrypt-lists"
-pack("dnscrypt-proxy2", "dnscrypt-proxy", "mips_siflower", """
-Depends: libc, ca-bundle
-Conflicts: dnscrypt-proxy
-License: ISC
-Section: net
-Description: dnscrypt-proxy for the GL-SFT1200
-""", [
-    ("usr/sbin/dnscrypt-proxy", elf(dnscrypt / "dnscrypt-proxy"), 0o755),
-    ("etc/init.d/dnscrypt-proxy", (FILES / "dnscrypt-proxy.init").read_bytes(), 0o755),
-    ("etc/dnscrypt-proxy2/dnscrypt-proxy.toml", (FILES / "dnscrypt-proxy.toml").read_bytes(), 0o644),
-    ("etc/dnscrypt-proxy2/blocked-names.txt", (dnscrypt / "example-blocked-names.txt").read_bytes(), 0o644),
-] + [
-    (f"etc/dnscrypt-proxy2/{f.name}", f.read_bytes(), 0o644) for f in sorted(lists.iterdir())
-], ["/etc/dnscrypt-proxy2/dnscrypt-proxy.toml"])
+    if "dnscrypt-proxy" not in FAILED:
+        dnscrypt = tree("dnscrypt-proxy")
+        lists = WORK / "dnscrypt-lists"
+        pack("dnscrypt-proxy2", "dnscrypt-proxy", "mips_siflower", """
+    Depends: libc, ca-bundle
+    Conflicts: dnscrypt-proxy
+    License: ISC
+    Section: net
+    Description: dnscrypt-proxy for the GL-SFT1200
+    """, [
+        ("usr/sbin/dnscrypt-proxy", elf(dnscrypt / "dnscrypt-proxy"), 0o755),
+        ("etc/init.d/dnscrypt-proxy", (FILES / "dnscrypt-proxy.init").read_bytes(), 0o755),
+        ("etc/dnscrypt-proxy2/dnscrypt-proxy.toml", (FILES / "dnscrypt-proxy.toml").read_bytes(), 0o644),
+        ("etc/dnscrypt-proxy2/blocked-names.txt", (dnscrypt / "example-blocked-names.txt").read_bytes(), 0o644),
+    ] + [
+        (f"etc/dnscrypt-proxy2/{f.name}", f.read_bytes(), 0o644) for f in sorted(lists.iterdir())
+    ], ["/etc/dnscrypt-proxy2/dnscrypt-proxy.toml"])
 
-pem = (ROOT / ".cache" / PINS["cacert"][4].replace("{v}", version("cacert")).rsplit("/", 1)[1]).read_bytes()
-pack("ca-bundle", "cacert", "all", """
-Depends: libc
-Provides: ca-certs
-License: MPL-2.0
-Section: base
-Description: Mozilla CA bundle for the GL-SFT1200
-""", [("etc/ssl/certs/ca-certificates.crt", pem, 0o644), ("etc/ssl/cert.pem", pem, 0o644)])
+    if "wireguard-tools" not in FAILED:
+        pack("wireguard-tools", "wireguard-tools", "mips_siflower", """
+    Depends: libc, kmod-wireguard
+    License: GPL-2.0
+    Section: net
+    Description: Static wg for the GL-SFT1200. The kernel module stays the stock one.
+    """, [
+        ("usr/bin/wg", elf(tree("wireguard-tools") / "src" / "wg"), 0o755),
+        ("usr/bin/wireguard_watchdog", (FILES / "wireguard_watchdog").read_bytes(), 0o755),
+        ("lib/netifd/proto/wireguard.sh", (FILES / "wireguard.sh").read_bytes(), 0o755),
+    ])
 
-# curl's cacert.pem puts each Mozilla label above its certificate, underlined with '='
-# and followed by '#' comment lines.
-certs, hashes = [], {}
-for label, cert in re.findall(rb"\n([^\n]+)\n=+\n(?:#[^\n]*\n)*(-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----)", pem, re.S):
-    name = re.sub(r"[^A-Za-z0-9._+-]", "_", label.decode().strip().replace(" ", "_")) + ".crt"
-    digest = subprocess.run(["openssl", "x509", "-noout", "-subject_hash"], input=cert, capture_output=True, check=True).stdout.decode().strip()
-    certs += [(f"etc/ssl/certs/{name}", cert + b"\n", 0o644), (f"etc/ssl/certs/{digest}.{hashes.get(digest, 0)}", name)]
-    hashes[digest] = hashes.get(digest, 0) + 1
-if len(certs) != 2 * pem.count(b"-----BEGIN CERTIFICATE-----") or len({c[0] for c in certs}) != len(certs):
-    raise SystemExit("cacert.pem certificates did not all map to unique files")
-pack("ca-certificates", "cacert", "all", """
-Depends: libc
-Provides: ca-certs
-License: MPL-2.0
-Section: base
-Description: Mozilla CA certificates for the GL-SFT1200
-""", certs)
+    if "softflowd" not in FAILED:
+        built = tree("softflowd")
+        softflowd = elf(built / "softflowd")
+        if version("softflowd").encode() not in softflowd:
+            raise SystemExit("softflowd version string does not match the pin")
+        pack("softflowd", "softflowd", "mips_siflower", """
+    Depends: libc
+    License: BSD-2-Clause
+    Section: net
+    Description: Static softflowd for the GL-SFT1200. libpcap is linked in, so the system libpcap stays.
+    """, [
+        ("usr/sbin/softflowd", softflowd, 0o755),
+        ("usr/sbin/softflowctl", elf(built / "softflowctl"), 0o755),
+        ("etc/init.d/softflowd", (FILES / "softflowd.init").read_bytes(), 0o755),
+        ("etc/config/softflowd", (FILES / "softflowd.config").read_bytes(), 0o644),
+    ], ["/etc/config/softflowd"])
+
+    if "cacert" not in FAILED:
+        pem = (ROOT / ".cache" / PINS["cacert"][4].replace("{v}", version("cacert")).rsplit("/", 1)[1]).read_bytes()
+        pack("ca-bundle", "cacert", "all", """
+    Depends: libc
+    Provides: ca-certs
+    License: MPL-2.0
+    Section: base
+    Description: Mozilla CA bundle for the GL-SFT1200
+    """, [("etc/ssl/certs/ca-certificates.crt", pem, 0o644), ("etc/ssl/cert.pem", pem, 0o644)])
+
+        # curl's cacert.pem puts each Mozilla label above its certificate, underlined with '='
+        # and followed by '#' comment lines.
+        certs, hashes = [], {}
+        for label, cert in re.findall(rb"\n([^\n]+)\n=+\n(?:#[^\n]*\n)*(-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----)", pem, re.S):
+            name = re.sub(r"[^A-Za-z0-9._+-]", "_", label.decode().strip().replace(" ", "_")) + ".crt"
+            digest = subprocess.run(["openssl", "x509", "-noout", "-subject_hash"], input=cert, capture_output=True, check=True).stdout.decode().strip()
+            certs += [(f"etc/ssl/certs/{name}", cert + b"\n", 0o644), (f"etc/ssl/certs/{digest}.{hashes.get(digest, 0)}", name)]
+            hashes[digest] = hashes.get(digest, 0) + 1
+        if len(certs) != 2 * pem.count(b"-----BEGIN CERTIFICATE-----") or len({c[0] for c in certs}) != len(certs):
+            raise SystemExit("cacert.pem certificates did not all map to unique files")
+        pack("ca-certificates", "cacert", "all", """
+    Depends: libc
+    Provides: ca-certs
+    License: MPL-2.0
+    Section: base
+    Description: Mozilla CA certificates for the GL-SFT1200
+    """, certs)
+
+
+if __name__ == "__main__":
+    main()
