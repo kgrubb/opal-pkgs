@@ -1,0 +1,90 @@
+Package: ca-bundle
+Version: 20261020-1
+Depends: libc
+Provides: ca-certs
+License: MPL-2.0
+Section: base
+Architecture: all
+Installed-Size: 400232
+Description: Mozilla CA bundle from 2026-10-20 for GL-SFT1200
+Filename: ca-bundle_20261020-1_all.ipk
+Size: 231174
+SHA256sum: a666d087dc79acc81e135e5d8512068c2d2d0c065861de33c201c04a7e827bc1
+
+Package: ca-certificates
+Version: 20261020-1
+Depends: libc
+Provides: ca-certs
+License: MPL-2.0
+Section: base
+Architecture: all
+Installed-Size: 178255
+Description: Mozilla CA certificates from 2026-10-20 for GL-SFT1200
+Filename: ca-certificates_20261020-1_all.ipk
+Size: 113214
+SHA256sum: cb506a418fb7be52c4cb1864f2b9d5b8026f2b90cdf6a9c4944a090928b73471
+
+Package: dnscrypt-proxy2
+Version: 2.1.20-1
+Depends: libc, ca-bundle
+Conflicts: dnscrypt-proxy
+License: ISC
+Section: net
+Architecture: mips_siflower
+Installed-Size: 14631047
+Description: dnscrypt-proxy 2.1.20 for GL-SFT1200 firmware 4.8.3
+Filename: dnscrypt-proxy2_2.1.20-1_mips_siflower.ipk
+Size: 4780800
+SHA256sum: e52c1393de1ec92a16d66769796820718bfea2292dba5c5199ad753f6a5b5a3d
+
+Package: dropbear
+Version: 2026.94-1
+Depends: libc
+Alternatives: 100:/usr/bin/ssh:/usr/sbin/dropbear, 100:/usr/bin/scp:/usr/sbin/dropbear
+Source: package/network/services/dropbear
+License: MIT
+LicenseFiles: LICENSE libtomcrypt/LICENSE libtommath/LICENSE
+Section: net
+Architecture: mips_siflower
+Installed-Size: 1053696
+Description: A small SSH2 server/client designed for small memory environments.
+ Static Dropbear 2026.94 for GL-SFT1200 firmware 4.8.3.
+Filename: dropbear_2026.94-1_mips_siflower.ipk
+Size: 478292
+SHA256sum: 1b6f2e2b08c287a484bc3a4eeb1b1ac3abb6b4a1d83c5c452f9c9bda10b7e3a1
+
+Package: ethtool
+Version: 7.2-1
+Depends: libc
+License: GPL-2.0
+Section: net
+Architecture: mips_siflower
+Installed-Size: 732476
+Description: ioctl ethtool 7.2 for GL-SFT1200 firmware 4.8.3
+Filename: ethtool_7.2-1_mips_siflower.ipk
+Size: 225100
+SHA256sum: bf1d1f90c2861c863bec3d37ee40f615966eb8e56b7958a619c822955c5ac38d
+
+Package: i2c-tools
+Version: 4.4-1
+Depends: libc
+License: GPL-2.0
+Section: utils
+Architecture: mips_siflower
+Installed-Size: 1598824
+Description: i2c-tools 4.4 for GL-SFT1200 firmware 4.8.3
+Filename: i2c-tools_4.4-1_mips_siflower.ipk
+Size: 721216
+SHA256sum: 88b06f6efdd2c856cb6fa83fff63934abc793edb72f010b69e25404850bc347f
+
+Package: sudo
+Version: 1.9.17p2-1
+Depends: libc
+License: ISC
+Section: admin
+Architecture: mips_siflower
+Installed-Size: 2075941
+Description: static sudo 1.9.17p2 for GL-SFT1200 firmware 4.8.3
+Filename: sudo_1.9.17p2-1_mips_siflower.ipk
+Size: 828334
+SHA256sum: fb9d4def6f06e41f04a66ceebe03c853d0eb6bbcf7ecac42839c8ef5786825e3
