@@ -217,6 +217,18 @@ Filename: snmpd_5.9.5.2-1_mips_siflower.ipk
 Size: 424732
 SHA256sum: c505747b914eaad575706bf3b5cec8932d14056a16f4cdf7775c4972734eb2c5
 
+Package: snmpd
+Version: 5.9.5.2-2
+Depends: libc
+License: BSD-3-Clause
+Section: net
+Description: Static net-snmp agent for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 1137342
+Filename: snmpd_5.9.5.2-2_mips_siflower.ipk
+Size: 424959
+SHA256sum: 7b26359e4f53b30af5eec2f2fb51aa6396f5491cbf230f187eac260d328abcd3
+
 Package: softflowd
 Version: 1.1.1-1
 Depends: libc
