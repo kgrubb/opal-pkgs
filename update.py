@@ -28,6 +28,7 @@ LATEST = {
     "dnsmasq": ("https://thekelleys.org.uk/dnsmasq/", r"dnsmasq-(\d+\.\d+)\.tar\.xz", ".asc"),
     "chrony": ("https://chrony-project.org/download.html", r"chrony-(\d+\.\d+(?:\.\d+)?)\.tar\.gz",
                "https://chrony-project.org/releases/chrony-{v}-tar-gz-asc.txt"),
+    "net-snmp": ("https://sourceforge.net/projects/net-snmp/rss?path=/net-snmp", r"net-snmp-(\d+(?:\.\d+)+)\.tar\.gz", ".asc"),
     # curl.se publishes no signature for cacert.pem, so HTTPS is the only check.
     "cacert": ("https://curl.se/docs/caextract.html", r"cacert-(\d{4}-\d{2}-\d{2})\.pem", None),
 }

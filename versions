@@ -11,6 +11,7 @@ libnfnetlink	1.0.2	-	b064c7c3d426efb4786e60a8e6859b82ee2f2c5e49ffeea640cfe4fe33c
 libnetfilter_conntrack	1.1.1	-	769d3eaf57fa4fbdb05dd12873b6cb9a5be7844d8937e222b647381d44284820	https://www.netfilter.org/pub/libnetfilter_conntrack/libnetfilter_conntrack-{v}.tar.xz
 libubox	c83a84afbef2b24f960ddeda0b5e2ab01fba6981	-	2f9a25f141183e61508b73d3a35e381f54ea45b4d3742bb2f5541c2743f38d26	https://github.com/openwrt/libubox/archive/{v}.tar.gz
 ubus	221ce7e7ff1bd1a0c9995fa9d32f58e865f7207f	-	d9947c63ce492a4b40e82c2cae43484709e6ba5969be9cc2905856148c65da3e	https://github.com/openwrt/ubus/archive/{v}.tar.gz
+net-snmp-wifi-mib	d107cdb7481d5706956ac78134f8be3db462628e	-	0606d041686320fe20f310dcb2e8de7c941f3242c5907d9db74291250316f6a4	https://raw.githubusercontent.com/openwrt/packages/{v}/net/net-snmp/patches/750-ieee802dot11.patch
 dropbear	2026.94	3	e098034a843699200c8c977a991fff73159735bf795d5f72ef672c41a6b1ae81	https://matt.ucc.asn.au/dropbear/releases/dropbear-{v}.tar.bz2
 ethtool	7.2	2	44256ddf4631ed08d816b7b8725f4b2e0f05e96b8c7ca64ee5c81449da2b6507	https://www.kernel.org/pub/software/network/ethtool/ethtool-{v}.tar.xz
 i2c-tools	4.4	2	8b15f0a880ab87280c40cfd7235cfff28134bf14d5646c07518b1ff6642a2473	https://www.kernel.org/pub/software/utils/i2c-tools/i2c-tools-{v}.tar.xz
@@ -21,4 +22,5 @@ softflowd	1.1.1	1	a6882e59931e5880901f8ee28d78b082cb3000ad8d28af35c13f2b528edbb2
 curl	8.23.0	1	8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5	https://curl.se/download/curl-{v}.tar.xz
 dnsmasq	2.93	1	0c00d4e5c97c8306e5fb932b348b34269c9c29a0e7df0e8e82958b407092bc19	https://thekelleys.org.uk/dnsmasq/dnsmasq-{v}.tar.xz
 chrony	4.9	1	4924c6f530105bcd5b9e9e33c48a2ae1bfd889222c8480bc41601110efc864d0	https://chrony-project.org/releases/chrony-{v}.tar.gz
+net-snmp	5.9.5.2	1	16707719f833184a4b72835dac359ae188123b06b5e42817c00790d7dc1384bf	https://downloads.sourceforge.net/project/net-snmp/net-snmp/{v}/net-snmp-{v}.tar.gz
 cacert	2026-10-20	2	796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe	https://curl.se/ca/cacert-{v}.pem
