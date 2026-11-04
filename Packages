@@ -205,6 +205,18 @@ Filename: i2c-tools_4.4-2_mips_siflower.ipk
 Size: 738323
 SHA256sum: bb0ee3435fb4df844462a8cde8ad5f08ad3a4ffebe6e3d6cf117824c9183e48e
 
+Package: snmpd
+Version: 5.9.5.2-1
+Depends: libc
+License: BSD-3-Clause
+Section: net
+Description: Static net-snmp agent for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 1137374
+Filename: snmpd_5.9.5.2-1_mips_siflower.ipk
+Size: 424732
+SHA256sum: c505747b914eaad575706bf3b5cec8932d14056a16f4cdf7775c4972734eb2c5
+
 Package: softflowd
 Version: 1.1.1-1
 Depends: libc
