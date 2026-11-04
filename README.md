@@ -20,13 +20,11 @@ feed, so an older build can be reinstalled by URL with `--force-downgrade`.
   the 32-bit `time_t` that the router's Linux 4.14 kernel needs. `pack.py`
   turns them into ipks in `out/`.
 - `.github/workflows/feed.yml` checks upstream every Monday. A new release
-  must carry a valid signature from the maintainer key in `keys/`. CI then
-  builds it, commits the new pin to `main` once the build passes, and
-  publishes the new ipks. The CA bundle has no upstream signature and relies
-  on HTTPS.
+  must carry a valid signature from the maintainer key in `keys/`. The CA
+  bundle, wireguard-tools, and softflowd have no upstream signature and rely on HTTPS.
+  softflowd links its own libpcap, so the router's libpcap package is left as it is.
+  One package failing leaves the others to publish, and the run goes red.
 - The `feed` branch is what GitHub Pages serves. It is append-only: CI adds
-  new filenames and never replaces or removes one.
-
-Changing a package's files without an upstream release needs a bump in the
-`release` column. Otherwise the filename already exists and the build is not
-published.
+  new filenames and never replaces or removes one. A rebuilt ipk whose bytes
+  differ from the published file gets the next release number, so the new
+  build is published under its own name.
