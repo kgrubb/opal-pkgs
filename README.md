@@ -24,7 +24,8 @@ feed, so an older build can be reinstalled by URL with `--force-downgrade`.
   bundle, wireguard-tools, and softflowd have no upstream signature and rely on HTTPS.
   softflowd links its own libpcap, so the router's libpcap package is left as it is.
   curl, dnsmasq, chrony, and snmpd link their libraries in the same way, so the
-  router's libcurl, libnettle, libubus, libcap, and libnetsnmp packages stay for GL programs.
+  router's libcurl, libnettle, libubus, and libcap packages stay for GL programs.
+  Nothing else uses libnetsnmp, so opkg removes it when snmpd is upgraded.
   snmpd carries OpenWrt's 802.11 MIB patch, pinned to a commit in openwrt/packages.
   One package failing leaves the others to publish, and the run goes red.
 - The `feed` branch is what GitHub Pages serves. It is append-only: CI adds
