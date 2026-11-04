@@ -19,9 +19,11 @@ feed, so an older build can be reinstalled by URL with `--force-downgrade`.
 - `build.sh` cross-compiles static binaries against musl 1.1.20, which keeps
   the 32-bit `time_t` that the router's Linux 4.14 kernel needs. `pack.py`
   turns them into ipks in `out/`.
-- `.github/workflows/feed.yml` checks upstream every Monday. When a release
-  is newer, it builds it, commits the new pin to `main` once the build passes,
-  and publishes the new ipks.
+- `.github/workflows/feed.yml` checks upstream every Monday. A new release
+  must carry a valid signature from the maintainer key in `keys/`. CI then
+  builds it, commits the new pin to `main` once the build passes, and
+  publishes the new ipks. The CA bundle has no upstream signature and relies
+  on HTTPS.
 - The `feed` branch is what GitHub Pages serves. It is append-only: CI adds
   new filenames and never replaces or removes one.
 

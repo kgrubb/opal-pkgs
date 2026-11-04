@@ -90,8 +90,8 @@ def pack(package, pin, arch, control, entries, conffiles=()):
 
 
 OUT.mkdir(exist_ok=True)
-dropbear = tree("dropbear")
-if f"SSH-2.0-dropbear_{version('dropbear')}".encode() not in elf(dropbear / "dropbear"):
+dropbear = elf(tree("dropbear") / "dropbearmulti")
+if f"SSH-2.0-dropbear_{version('dropbear')}".encode() not in dropbear:
     raise SystemExit("dropbear banner does not match the pinned version")
 pack("dropbear", "dropbear", "mips_siflower", """
 Depends: libc
@@ -100,11 +100,13 @@ License: MIT
 Section: net
 Description: Static Dropbear SSH server and client for the GL-SFT1200
 """, [
-    ("usr/sbin/dropbear", elf(dropbear / "dropbear"), 0o755),
-    ("usr/bin/dbclient", elf(dropbear / "dbclient"), 0o755),
-    ("usr/bin/dropbearkey", elf(dropbear / "dropbearkey"), 0o755),
+    ("usr/sbin/dropbear", dropbear, 0o755),
+    ("usr/bin/dbclient", "../sbin/dropbear"),
+    ("usr/bin/dropbearkey", "../sbin/dropbear"),
     ("etc/init.d/dropbear", (FILES / "dropbear.init").read_bytes(), 0o755),
     ("etc/config/dropbear", (FILES / "dropbear.config").read_bytes(), 0o644),
+    # Empty like stock: opkg deletes an owned file the new package omits, conffile or not.
+    ("etc/dropbear/dropbear_rsa_host_key", b"", 0o600),
 ], ["/etc/dropbear/dropbear_rsa_host_key", "/etc/config/dropbear"])
 
 pack("ethtool", "ethtool", "mips_siflower", """
@@ -172,8 +174,8 @@ for label, cert in re.findall(rb"\n([^\n]+)\n=+\n(?:#[^\n]*\n)*(-----BEGIN CERTI
     digest = subprocess.run(["openssl", "x509", "-noout", "-subject_hash"], input=cert, capture_output=True, check=True).stdout.decode().strip()
     certs += [(f"etc/ssl/certs/{name}", cert + b"\n", 0o644), (f"etc/ssl/certs/{digest}.{hashes.get(digest, 0)}", name)]
     hashes[digest] = hashes.get(digest, 0) + 1
-if len(hashes) < 100:
-    raise SystemExit("cacert.pem has too few certificates")
+if len(certs) != 2 * pem.count(b"-----BEGIN CERTIFICATE-----") or len({c[0] for c in certs}) != len(certs):
+    raise SystemExit("cacert.pem certificates did not all map to unique files")
 pack("ca-certificates", "cacert", "all", """
 Depends: libc
 Provides: ca-certs
