@@ -29,9 +29,14 @@ LATEST = {
     "chrony": ("https://chrony-project.org/download.html", r"chrony-(\d+\.\d+(?:\.\d+)?)\.tar\.gz",
                "https://chrony-project.org/releases/chrony-{v}-tar-gz-asc.txt"),
     "net-snmp": ("https://sourceforge.net/projects/net-snmp/rss?path=/net-snmp", r"net-snmp-(\d+(?:\.\d+)+)\.tar\.gz", ".asc"),
-    # curl.se publishes no signature for cacert.pem, so HTTPS is the only check.
-    "cacert": ("https://curl.se/docs/caextract.html", r"cacert-(\d{4}-\d{2}-\d{2})\.pem", None),
+    # curl.se publishes no signature for the CA bundle, so HTTPS is the only check.
+    # ca-certificates is the same file. apply() copies a new version onto that row
+    # and leaves its release alone until the version changes.
+    "ca-bundle": ("https://curl.se/docs/caextract.html", r"cacert-(\d{4}-\d{2}-\d{2})\.pem", None),
 }
+
+# One upstream file, two packages. The follower keeps its own release until the version changes.
+SAME = {"ca-bundle": "ca-certificates"}
 
 
 def get(url):
@@ -85,6 +90,15 @@ def apply(lines, fetch, latest=None):
                 continue
             out[i] = "\t".join([name, newest, "1", sha, url])
             notes.append(f"- {name} {current} -> {newest}")
+            other = SAME.get(name)
+            if other:
+                for j, follower in enumerate(out):
+                    cols = follower.split("\t") if follower and not follower.startswith("#") else []
+                    if cols and cols[0] == other:
+                        previous = cols[1]
+                        cols[1], cols[2], cols[3] = newest, "1", sha
+                        out[j] = "\t".join(cols)
+                        notes.append(f"- {other} {previous} -> {newest}")
         except (SystemExit, OSError) as err:
             errors.append(err.code if isinstance(err, SystemExit) and isinstance(err.code, str) else f"{name}: {err}")
     return out, notes, errors

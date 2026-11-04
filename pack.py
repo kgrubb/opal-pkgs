@@ -300,9 +300,9 @@ def main():
         ("etc/init.d/snmpd", (FILES / "snmpd.init").read_bytes(), 0o755),
     ], ["/etc/config/snmpd"])
 
-    if "cacert" not in FAILED:
-        pem = (ROOT / ".cache" / PINS["cacert"][4].replace("{v}", version("cacert")).rsplit("/", 1)[1]).read_bytes()
-        pack("ca-bundle", "cacert", "all", """
+    if "ca-bundle" not in FAILED and "ca-certificates" not in FAILED:
+        pem = (ROOT / ".cache" / PINS["ca-bundle"][4].replace("{v}", version("ca-bundle")).rsplit("/", 1)[1]).read_bytes()
+        pack("ca-bundle", "ca-bundle", "all", """
     Depends: libc
     Provides: ca-certs
     License: MPL-2.0
@@ -320,7 +320,7 @@ def main():
             hashes[digest] = hashes.get(digest, 0) + 1
         if len(certs) != 2 * pem.count(b"-----BEGIN CERTIFICATE-----") or len({c[0] for c in certs}) != len(certs):
             raise SystemExit("cacert.pem certificates did not all map to unique files")
-        pack("ca-certificates", "cacert", "all", """
+        pack("ca-certificates", "ca-certificates", "all", """
     Depends: libc
     Provides: ca-certs
     License: MPL-2.0

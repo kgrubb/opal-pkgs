@@ -12,22 +12,43 @@ field() { awk -F '\t' -v n="$1" -v f="$2" '$1 == n { print $f }' versions; }
 ver() { field "$1" 2; }
 
 # Download a pinned source once, verify it, and print its path.
+# A partial file is removed. The next call downloads it again.
 src() {
   url=$(field "$1" 5 | sed "s/{v}/$(ver "$1")/g")
   file=$CACHE/${url##*/}
-  [ -f "$file" ] || curl -fsSL --retry 3 -o "$file" "$url"
-  echo "$(field "$1" 4)  $file" | shasum -a 256 -c - >&2
+  sum=$(field "$1" 4)
+  if [ -f "$file" ]; then
+    echo "$sum  $file" | shasum -a 256 -c - >&2 || rm -f "$file"
+  fi
+  if [ ! -f "$file" ]; then
+    tmp=$(mktemp "$CACHE/.partial.XXXXXX")
+    if ! curl -fsSL --retry 3 -o "$tmp" "$url"; then
+      rm -f "$tmp"
+      return 1
+    fi
+    if ! echo "$sum  $tmp" | shasum -a 256 -c - >&2; then
+      rm -f "$tmp"
+      return 1
+    fi
+    mv "$tmp" "$file"
+  fi
   echo "$file"
 }
 
 # Extract a pinned tarball into work/<name>-<version> once.
+# The directory appears only after tar finishes, so a killed extract is not reused.
 unpack() {
   dir=$WORK/$1-$(ver "$1")
-  if [ ! -d "$dir" ]; then
-    file=$(src "$1")
-    mkdir -p "$dir"
-    tar -xf "$file" -C "$dir" --strip-components=1
+  if [ -d "$dir" ]; then
+    return 0
   fi
+  file=$(src "$1")
+  stage=$(mktemp -d "$WORK/.partial.XXXXXX")
+  if ! tar -xf "$file" -C "$stage" --strip-components=1; then
+    rm -rf "$stage"
+    return 1
+  fi
+  mv "$stage" "$dir"
 }
 
 case $(uname -sm) in
@@ -66,8 +87,9 @@ fail() {
     awk -F '\t' -v n="$1" -f "$ROOT/restore.awk" "$base" versions > "$WORK/versions.new" && mv "$WORK/versions.new" versions
   fi
 }
-
-if ! (
+# Do not put these subshells in an if test. The shell turns set -e off there.
+set +e
+(
   set -e
   unpack dropbear
   cd "$WORK/dropbear-$(ver dropbear)"
@@ -81,10 +103,15 @@ if ! (
     make -j"$JOBS" STATIC=1 MULTI=1 PROGRAMS="dropbear dbclient dropbearkey scp" \
       LDFLAGS="-Wl,-z,now -Wl,-z,relro -Wl,--gc-sections"
   fi
-); then fail dropbear; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail dropbear
+
 
 # Netlink ethtool needs Linux 5.6, so this build uses the ioctl interface.
-if ! (
+set +e
+(
   set -e
   unpack ethtool
   cd "$WORK/ethtool-$(ver ethtool)"
@@ -92,9 +119,14 @@ if ! (
     ./configure --host=mipsel-linux-musl --disable-netlink CC=$CC CFLAGS="-Os -I$ROOT/kheaders"
     make -j"$JOBS"
   fi
-); then fail ethtool; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail ethtool
 
-if ! (
+
+set +e
+(
   set -e
   unpack i2c-tools
   cd "$WORK/i2c-tools-$(ver i2c-tools)"
@@ -103,10 +135,15 @@ if ! (
     CC=$CC CFLAGS="-Os -I$ROOT/kheaders" make -j"$JOBS" \
       AR=mipsel-linux-musl-ar USE_STATIC_LIB=1 BUILD_DYNAMIC_LIB=0
   fi
-); then fail i2c-tools; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail i2c-tools
+
 
 # sudoers is linked into sudo, so the package ships no plugin .so files.
-if ! (
+set +e
+(
   set -e
   unpack sudo
   cd "$WORK/sudo-$(ver sudo)"
@@ -118,9 +155,14 @@ if ! (
       --disable-shared --enable-static-sudoers --disable-shared-libutil
     make -j"$JOBS"
   fi
-); then fail sudo; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail sudo
 
-if ! (
+
+set +e
+(
   set -e
   unpack dnscrypt-proxy
   # Unpinned because the lists change daily. dnscrypt-proxy checks each minisig before use.
@@ -128,15 +170,32 @@ if ! (
   mkdir -p "$lists"
   for f in public-resolvers.md relays.md odoh-servers.md; do
     for g in "$f" "$f.minisig"; do
-      curl -fsSL --retry 3 -o "$lists/$g" "https://download.dnscrypt.info/resolvers-list/v3/$g"
+      tmp=$(mktemp "$lists/.partial.XXXXXX")
+      curl -fsSL --retry 3 -o "$tmp" "https://download.dnscrypt.info/resolvers-list/v3/$g" || { rm -f "$tmp"; exit 1; }
+      mv "$tmp" "$lists/$g"
     done
   done
-); then fail dnscrypt-proxy; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail dnscrypt-proxy
 
-if ! ( set -e; src cacert >/dev/null ); then fail cacert; fi
+
+set +e
+(
+  set -e
+  src ca-bundle >/dev/null
+)
+status=$?
+set -e
+if [ "$status" -ne 0 ]; then
+  fail ca-bundle
+  fail ca-certificates
+fi
 
 # The kernel module stays stock. PLATFORM=linux because the build host is not the router.
-if ! (
+set +e
+(
   set -e
   unpack wireguard-tools
   cd "$WORK/wireguard-tools-$(ver wireguard-tools)/src"
@@ -145,10 +204,15 @@ if ! (
     PLATFORM=linux CC=$CC CFLAGS="-Os -Iuapi/linux -idirafter ${ZIG%/*}/lib/libc/include/any-linux-any" \
       make -j"$JOBS" wg
   fi
-); then fail wireguard-tools; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail wireguard-tools
+
 
 # libpcap is linked into softflowd. The router's libpcap package stays.
-if ! (
+set +e
+(
   set -e
   if ! command -v autoreconf >/dev/null || ! command -v flex >/dev/null || ! command -v bison >/dev/null; then
     sudo apt-get update -qq
@@ -173,11 +237,16 @@ if ! (
       ./configure --host=mipsel-linux-musl CC=$CC
     make -j"$JOBS"
   fi
-); then fail softflowd; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail softflowd
+
 
 # mbedTLS is linked into curl. The router's libcurl and OpenSSL packages stay for the GL programs that load them.
 # Protocols match the stock curl: file, ftp, ftps, http, https.
-if ! (
+set +e
+(
   set -e
   unpack mbedtls
   unpack curl
@@ -199,11 +268,16 @@ if ! (
       --enable-ipv6 --with-ca-bundle=/etc/ssl/certs/ca-certificates.crt --with-ca-path=/etc/ssl/certs &&
     make -j"$JOBS"
   fi
-); then fail curl; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail curl
+
 
 # Same compile options as the stock dnsmasq-full: ubus, conntrack, ipset, and DNSSEC through nettle's mini-gmp.
 # libubox and libubus are the commits the router's ubusd runs, so the wire protocol matches.
-if ! (
+set +e
+(
   set -e
   kinc="-idirafter ${ZIG%/*}/lib/libc/include/any-linux-any -idirafter ${ZIG%/*}/lib/libc/include/mips-linux-any"
   deps=$WORK/dnsmasq-deps
@@ -250,10 +324,15 @@ if ! (
       ubus_libs="-lubus -lubox" ct_cflags= ct_libs="-lnetfilter_conntrack -lnfnetlink -lmnl" \
       nettle_cflags= nettle_libs="-lhogweed -lnettle" gmp_libs=
   fi
-); then fail dnsmasq; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail dnsmasq
+
 
 # Paths and user match the stock chrony. libcap is linked in so chronyd still drops root to the chrony user.
-if ! (
+set +e
+(
   set -e
   unpack libcap
   unpack chrony
@@ -272,11 +351,16 @@ if ! (
       --with-user=chrony --disable-readline --disable-rtc --disable-sechash --disable-nts --without-seccomp &&
     make -j"$JOBS"
   fi
-); then fail chrony; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail chrony
+
 
 # Agent modules and transports match OpenWrt's nossl net-snmp, including its 802.11 MIB.
 # dlmod is left out because a static snmpd cannot load modules.
-if ! (
+set +e
+(
   set -e
   kinc="-idirafter ${ZIG%/*}/lib/libc/include/any-linux-any -idirafter ${ZIG%/*}/lib/libc/include/mips-linux-any"
   unpack net-snmp
@@ -300,7 +384,11 @@ if ! (
       --with-mib-modules="agent/extend agentx host/hr_device host/hr_disk host/hr_filesys host/hr_network host/hr_partition host/hr_proc host/hr_storage host/hr_system ieee802dot11 if-mib/ifXTable ip-mib/ipAddressTable ip-mib/inetNetToMediaTable ip-forward-mib/inetCidrRouteTable ip-forward-mib/ipCidrRouteTable mibII/at mibII/icmp mibII/ifTable mibII/ip mibII/snmp_mib mibII/sysORTable mibII/system_mib mibII/tcp mibII/udp mibII/vacm_context mibII/vacm_vars snmpv3/snmpEngine snmpv3/snmpMPDStats snmpv3/usmConf snmpv3/usmStats snmpv3/usmUser tunnel ucd-snmp/disk_hw ucd-snmp/extensible ucd-snmp/loadave ucd-snmp/memory ucd-snmp/pass ucd-snmp/pass_persist ucd-snmp/proc ucd-snmp/vmstat util_funcs utilities/execute" &&
     make -j"$JOBS"
   fi
-); then fail net-snmp; fi
+)
+status=$?
+set -e
+[ "$status" -eq 0 ] || fail net-snmp
+
 
 python3 pack.py || fail pack
 if [ -s "$WORK/failed" ] && [ ! -f "${VERSIONS_BASE:-}" ]; then

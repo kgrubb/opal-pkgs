@@ -1,17 +1,18 @@
 # opal-pkgs
 
-opkg feed for the GL.iNet Opal (GL-SFT1200) on firmware 4.8.3. Each package
-replaces the stock package of the same name.
+Newer upstream releases of the userspace on a GL.iNet Opal (GL-SFT1200) running firmware 4.8.3. Each package replaces the stock package of the same name.
+
+On the router:
 
 ```sh
 echo 'src/gz opal https://kgrubb.github.io/opal-pkgs' >> /etc/opkg/customfeeds.conf
 opkg update
-opkg upgrade ethtool
+opkg upgrade
 ```
 
-Upgrade by package name. A bare `opkg upgrade` also replaces running services
-such as `dropbear`, `dnsmasq-full`, `chrony`, `snmpd`, and `dnscrypt-proxy2`. Every published ipk stays in the
-feed, so an older build can be reinstalled by URL with `--force-downgrade`.
+`opkg upgrade` installs the newer build of every package the feed and the router already share. ssh, dns, and ntp restart when those packages update. Reconnect ssh after it finishes.
+
+Every published ipk stays in the feed. Reinstall an older file by URL with `--force-downgrade`.
 
 ## How it works
 

@@ -89,7 +89,7 @@ snmpd_access_add() {
 	config_get group "$cfg" group
 	[ -n "$group" ] || return 0
 	config_get context "$cfg" context
-	[ -n $context ] || return 0
+	[ -n "$context" ] || return 0
 	[ "$context" == "none" ] && context='""'
 	config_get version "$cfg" version
 	[ -n "$version" ] || return 0

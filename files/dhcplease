@@ -8,12 +8,13 @@ if [ "x$1" = "xadd" -o "x$1" = "xold" ];then
 	in_devlist=$(uci -q get devlist.${mac})
 	if [ -n "${in_wldevlist}" ]
 	then
-		uci -q set wldevlist.${mac}.hostname=$4
+		uci -q set "wldevlist.${mac}.hostname=$4"
+		uci commit wldevlist
 	elif [ -n "${in_devlist}" ]
 	then
-		uci -q set devlist.${mac}.hostname=$4
+		uci -q set "devlist.${mac}.hostname=$4"
+		uci commit devlist
 	else
 		logger -t dhcplease this mac:$2 is not in wldevlist or devlist
 	fi
-	uci commit
 fi
