@@ -18,7 +18,7 @@ def pack_pkg():
     Depends: libc, kmod-wireguard
     License: GPL-2.0
     Section: net
-    Description: Static wg for the GL-SFT1200. The kernel module stays the stock one.
+    Description: WireGuard userspace tools
     """,
             [
                 ("usr/bin/wg", elf(tree("wireguard-tools") / "src" / "wg"), 0o755),

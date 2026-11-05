@@ -22,7 +22,7 @@ def pack_pkg():
     Depends: libc
     License: ISC
     Section: admin
-    Description: Static sudo with built-in sudoers for the GL-SFT1200
+    Description: execute a command as another user, with sudoers compiled in
     """,
             [
                 ("usr/bin/sudo", elf(sudo / "src" / "sudo"), 0o4755),

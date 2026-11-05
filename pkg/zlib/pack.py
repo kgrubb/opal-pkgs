@@ -68,7 +68,7 @@ def pack_pkg():
     Depends: libc
     License: Zlib
     Section: libs
-    Description: Shared zlib 1.3.1 for the GL-SFT1200 (ABI drop-in for 1.2.11).
+    Description: zlib 1.3.1 shared library, ABI-compatible with 1.2.11
     """,
         [
             ("usr/lib/libz.so.1", data, 0o644),

@@ -26,7 +26,7 @@ def pack_pkg():
     Depends: libc
     License: BSD-2-Clause
     Section: net
-    Description: Static softflowd for the GL-SFT1200. libpcap is linked in, so the system libpcap stays.
+    Description: flow-based network traffic analyzer (libpcap built in)
     """,
             [
                 ("usr/sbin/softflowd", softflowd, 0o755),

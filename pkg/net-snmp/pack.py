@@ -26,7 +26,7 @@ def pack_pkg():
     Depends: libc
     License: BSD-3-Clause
     Section: net
-    Description: Static net-snmp agent for the GL-SFT1200
+    Description: SNMP agent
     """,
             [
                 ("usr/sbin/snmpd", snmpd, 0o755),

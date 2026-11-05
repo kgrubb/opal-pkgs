@@ -25,7 +25,7 @@ def pack_pkg():
     Alternatives: 100:/usr/bin/ssh:/usr/sbin/dropbear, 100:/usr/bin/scp:/usr/sbin/dropbear
     License: MIT
     Section: net
-    Description: Static Dropbear SSH server and client for the GL-SFT1200
+    Description: SSH server and client
     """,
             [
                 ("usr/sbin/dropbear", dropbear, 0o755),

@@ -24,7 +24,7 @@ def pack_pkg():
     Conflicts: dnscrypt-proxy
     License: ISC
     Section: net
-    Description: dnscrypt-proxy for the GL-SFT1200
+    Description: DNSCrypt proxy
     """,
             [
                 ("usr/sbin/dnscrypt-proxy", elf(dnscrypt / "dnscrypt-proxy"), 0o755),

@@ -48,7 +48,7 @@ def pack_pkg():
     Depends: libc, ca-bundle
     License: MIT
     Section: libs
-    Description: Shared libcurl with static mbedTLS for the GL-SFT1200. Replaces stock OpenSSL-linked libcurl.
+    Description: client-side URL transfer library (mbedTLS)
     """,
         [
             (f"usr/lib/{real}", data, 0o755),
