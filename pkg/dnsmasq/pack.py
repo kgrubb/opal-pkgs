@@ -23,7 +23,7 @@ def pack_pkg():
     Require-User: dnsmasq=453:dnsmasq=453 dnsmasq_vpn=456:dnsmasq=453
     License: GPL-2.0
     Section: net
-    Description: Static dnsmasq with DHCP, DNSSEC, ipset, conntrack and ubus for the GL-SFT1200
+    Description: DNS and DHCP server with DNSSEC, ipset, conntrack, and ubus
     """,
             [
                 ("usr/sbin/dnsmasq", elf(tree("dnsmasq") / "src" / "dnsmasq"), 0o755),

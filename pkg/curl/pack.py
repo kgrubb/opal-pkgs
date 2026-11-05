@@ -13,7 +13,7 @@ def pack_pkg():
     Depends: libc, ca-bundle
     License: MIT
     Section: net
-    Description: Static curl with mbedTLS for the GL-SFT1200. The system libcurl stays for GL programs.
+    Description: command line tool for transferring data with URL syntax (mbedTLS)
     """,
             [("usr/bin/curl", elf(tree("curl") / "src" / "curl"), 0o755)],
         )

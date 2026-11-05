@@ -25,7 +25,7 @@ def pack_pkg():
     Require-User: chrony=323:chrony=323
     License: GPL-2.0
     Section: net
-    Description: Static chrony for the GL-SFT1200
+    Description: NTP client and server
     """,
             [
                 ("usr/sbin/chronyd", chronyd, 0o755),

@@ -17,7 +17,7 @@ def pack_pkg():
     Depends: libc
     License: GPL-2.0
     Section: net
-    Description: Static ethtool (ioctl interface) for the GL-SFT1200
+    Description: display or change Ethernet device settings (ioctl interface)
     """,
             [("usr/sbin/ethtool", elf(tree("ethtool") / "ethtool"), 0o755)],
         )

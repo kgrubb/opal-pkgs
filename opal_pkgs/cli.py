@@ -14,7 +14,9 @@ def main(argv=None):
 
     commands.add_parser("pack", help="pack the built trees into ipks")
     commands.add_parser("update", help="bump versions to the newest signed release")
-    index_cmd = commands.add_parser("index", help="write the opkg Packages index")
+    index_cmd = commands.add_parser(
+        "index", help="write Packages, Packages.gz, and index.html"
+    )
     index_cmd.add_argument("feed")
 
     args = parser.parse_args(argv)

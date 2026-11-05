@@ -17,7 +17,7 @@ def pack_pkg():
     Depends: libc
     License: GPL-2.0
     Section: utils
-    Description: Static i2c-tools for the GL-SFT1200
+    Description: I2C tools for Linux
     """,
             [
                 (f"usr/sbin/{tool}", elf(tree("i2c-tools") / "tools" / tool), 0o755)

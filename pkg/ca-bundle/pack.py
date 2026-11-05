@@ -29,7 +29,7 @@ def pack_pkg():
     Provides: ca-certs
     License: MPL-2.0
     Section: base
-    Description: Mozilla CA bundle for the GL-SFT1200
+    Description: Mozilla CA certificate bundle (PEM)
     """,
             [
                 ("etc/ssl/certs/ca-certificates.crt", pem, 0o644),
@@ -79,7 +79,7 @@ def pack_pkg():
     Provides: ca-certs
     License: MPL-2.0
     Section: base
-    Description: Mozilla CA certificates for the GL-SFT1200
+    Description: Mozilla CA certificates as separate files
     """,
             certs,
         )

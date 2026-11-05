@@ -91,6 +91,75 @@ def test_write_index_rejects_a_bad_control_or_an_empty_feed(tmp_path):
         index.write_index(empty)
 
 
+def test_version_key_and_human_size():
+    assert index.version_key("1.9-1") < index.version_key("1.10-1")
+    assert index.version_key("1.2-9") < index.version_key("1.2-10")
+    assert index.human_size(512) == "512 B"
+    assert index.human_size(1536) == "1.5 KiB"
+    assert index.human_size(1024 * 1024) == "1 MiB"
+
+
+def test_write_index_writes_a_package_browser(tmp_path):
+    feed = tmp_path / "feed"
+    feed.mkdir()
+
+    def put(name, package, version, description=None, extra=b""):
+        lines = [f"Package: {package}", f"Version: {version}", "Architecture: all"]
+        if description is not None:
+            lines.append(f"Description: {description}")
+        (feed / name).write_bytes(
+            pack.ipk(
+                [
+                    ("debian-binary", b"2.0\n"),
+                    ("data.tar.gz", pack.tgz([("usr/bin/demo", b"hi", 0o755)])),
+                    (
+                        "control.tar.gz",
+                        pack.tgz(
+                            [
+                                (
+                                    "control",
+                                    ("\n".join(lines) + "\n").encode() + extra,
+                                    0o644,
+                                )
+                            ]
+                        ),
+                    ),
+                ]
+            )
+        )
+
+    put("aaa_1.0-1_all.ipk", "aaa", "1.0-1")
+    put("demo_1.9-1_all.ipk", "demo", "1.9-1", "old tool")
+    put(
+        "demo_1.10-1_all.ipk",
+        "demo",
+        "1.10-1",
+        'a <b>bold</b> "tool"',
+        b"Depends: libc\nLicense: GPL-2.0\nSection: net\nInstalled-Size: 12\n",
+    )
+    index.write_index(feed)
+    page = (feed / "index.html").read_text()
+    assert "2 packages, 3 ipks" in page
+    assert page.index("<h2>aaa</h2>") < page.index("<h2>demo</h2>")
+    assert page.index("1.10-1") < page.index("1.9-1")
+    assert "<b>" not in page
+    assert "&lt;b&gt;bold&lt;/b&gt; &quot;tool&quot;" in page
+    assert "Depends: libc" in page
+    assert "License: GPL-2.0" in page
+    assert 'href="demo_1.10-1_all.ipk"' in page
+    assert (
+        hashlib.sha256((feed / "demo_1.10-1_all.ipk").read_bytes()).hexdigest() in page
+    )
+    assert "old tool" in page
+    assert '<details class="older"><summary>1 older version</summary>' in page
+    assert page.count("older version") == 1
+    assert ">checksum</summary>" in page
+    assert ">depends and checksum</summary>" in page
+    assert 'id="q"' in page
+    assert "src/gz opal https://kgrubb.github.io/opal-pkgs" in page
+    assert "location.href" not in page
+
+
 def test_write_index_writes_packages_and_a_zero_mtime_gzip(tmp_path):
     feed = tmp_path / "feed"
     feed.mkdir()

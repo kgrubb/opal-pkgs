@@ -12,7 +12,7 @@ opkg update
 opkg list-upgradable | awk '{print $1}' | xargs -r opkg upgrade
 ```
 
-Every published ipk stays in the feed, so if you need to reinstall an older version, use the `--force-downgrade` option.
+Every published ipk stays in the feed, so if you need to reinstall an older version, use the `--force-downgrade` option. Open https://kgrubb.github.io/opal-pkgs to see the ipks.
 
 ## Adding a package
 

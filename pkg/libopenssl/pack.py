@@ -97,7 +97,7 @@ def pack_pkg():
     Depends: libc
     License: OpenSSL
     Section: libs
-    Description: Shared OpenSSL 1.1.1w for the GL-SFT1200 (ABI drop-in for 1.1.1i). Freexian ELTS 1.1.1w-0+deb11u8 code backports.
+    Description: OpenSSL 1.1.1w shared libraries (ABI-compatible with 1.1.1i, Freexian ELTS 1.1.1w-0+deb11u8)
     """,
         [
             ("usr/lib/libcrypto.so.1.1", crypto, 0o644),
