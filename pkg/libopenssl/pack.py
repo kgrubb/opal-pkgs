@@ -2,6 +2,7 @@ from pathlib import Path
 
 from opal_pkgs.pack import (
     FAILED,
+    exe,
     load_exports,
     load_names,
     pack,
@@ -97,10 +98,28 @@ def pack_pkg():
     Depends: libc
     License: OpenSSL
     Section: libs
-    Description: OpenSSL 1.1.1w shared libraries (ABI-compatible with 1.1.1i, Freexian ELTS 1.1.1w-0+deb11u8)
+    Description: Open source SSL toolkit (libraries)
     """,
         [
             ("usr/lib/libcrypto.so.1.1", crypto, 0o644),
             ("usr/lib/libssl.so.1.1", ssl, 0o644),
         ],
+    )
+    if "openssl-util" in FAILED:
+        return
+    openssl = exe(
+        root / "apps" / "openssl",
+        {"libc.so", "libgcc_s.so.1", "libcrypto.so.1.1", "libssl.so.1.1"},
+    )
+    pack(
+        "openssl-util",
+        "openssl-util",
+        "mips_siflower",
+        """
+    Depends: libc, libopenssl, libopenssl-conf
+    License: OpenSSL
+    Section: utils
+    Description: Open source SSL toolkit (utility)
+    """,
+        [("usr/bin/openssl", openssl, 0o755)],
     )

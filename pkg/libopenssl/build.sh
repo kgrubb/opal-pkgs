@@ -1,4 +1,5 @@
 # Shared libssl/libcrypto 1.1.1w for the Opal. no-asm: zig's clang misassembles MIPS asm.
+# Also builds apps/openssl for the openssl-util ipk.
 unpack libopenssl
 cd "$WORK/libopenssl-$(ver libopenssl)"
 if [ ! -f libssl.so.1.1 ]; then
@@ -13,4 +14,7 @@ if [ ! -f libssl.so.1.1 ]; then
     no-whirlpool no-mdc2 no-sm2 no-sm3 no-sm4 no-blake2 \
     no-afalgeng no-hw-padlock no-gost || exit 1
   SOURCE_DATE_EPOCH=1694441316 make -j"$JOBS" build_libs || exit 1
+fi
+if [ ! -x apps/openssl ]; then
+  SOURCE_DATE_EPOCH=1694441316 make -j"$JOBS" build_apps || exit 1
 fi

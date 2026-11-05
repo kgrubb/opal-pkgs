@@ -58,14 +58,17 @@ def _cstr(data, offset):
     return data[offset : data.index(b"\0", offset)].decode()
 
 
-def _dyn(path):
-    """Parse a section-stripped MIPS32 LE ET_DYN. Raises SystemExit on refusal."""
+def _dyn(path, *, shared=True):
+    """Parse a section-stripped MIPS32 LE ELF with PT_DYNAMIC. Raises SystemExit on refusal."""
     data = Path(path).read_bytes()
     if data[:6] != b"\x7fELF\x01\x01" or struct.unpack_from("<H", data, 18)[0] != 8:
         raise SystemExit(f"{path}: not a 32-bit little-endian MIPS ELF")
     e_type = struct.unpack_from("<H", data, 16)[0]
-    if e_type != 3:
-        raise SystemExit(f"{path}: not ET_DYN")
+    if shared:
+        if e_type != 3:
+            raise SystemExit(f"{path}: not ET_DYN")
+    elif e_type not in (2, 3):
+        raise SystemExit(f"{path}: not ET_EXEC/ET_DYN")
     e_flags = struct.unpack_from("<I", data, 36)[0]
     # EF_MIPS_ABI_O32 = 0x1000; EF_MIPS_ABI2 (n32) = 0x20.
     if e_flags & 0x20:
@@ -88,8 +91,10 @@ def _dyn(path):
             has_interp = True
         elif ptype == 0x6474E551 and pfl & 1:
             stack_x = True
-    if has_interp:
+    if shared and has_interp:
         raise SystemExit(f"{path}: has PT_INTERP")
+    if not shared and not has_interp:
+        raise SystemExit(f"{path}: missing PT_INTERP")
     if dyn_off is None:
         raise SystemExit(f"{path}: no PT_DYNAMIC")
 
@@ -185,6 +190,26 @@ def _dyn(path):
         "fp_abi": fp_abi,
         "stack_x": stack_x,
     }
+
+
+def exe(path, needed_allow):
+    """Refuse a dynamically linked MIPS32 LE executable the Opal would reject."""
+    info = _dyn(path, shared=False)
+    needed = set(info["needed"])
+    allow = set(needed_allow)
+    if not needed <= allow:
+        raise SystemExit(f"{path}: NEEDED {sorted(needed)} not in {sorted(allow)}")
+    if "libc.so" not in needed:
+        raise SystemExit(f"{path}: NEEDED missing libc.so")
+    if 15 in info["tags"] or 29 in info["tags"]:
+        raise SystemExit(f"{path}: has DT_RPATH/DT_RUNPATH")
+    if info["stack_x"]:
+        raise SystemExit(f"{path}: executable PT_GNU_STACK")
+    if info["fp_abi"] is not None and info["fp_abi"] != 1:
+        raise SystemExit(f"{path}: fp_abi={info['fp_abi']} (want 1)")
+    if b"clock_gettime64" in info["data"]:
+        raise SystemExit(f"{path}: needs time64 syscalls")
+    return info["data"]
 
 
 def so(path, soname, needed_allow, verdefs, exports_required, undef_allow=None):

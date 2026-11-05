@@ -289,6 +289,7 @@ def test_musl_is_configured_for_a_32_bit_sysroot_and_skipped_when_present(tmp_pa
 
 def test_libc_stub_is_built_once_and_skipped_when_present(tmp_path):
     env = {
+        "SYSROOT": str(tmp_path / "sysroot"),
         "SYSROOT_SO": str(tmp_path / "sysroot-so"),
         "PATH": os.environ["PATH"],
         "ZIG": "/zig",
@@ -304,6 +305,7 @@ def test_libc_stub_is_built_once_and_skipped_when_present(tmp_path):
     assert calls[0][:3] == ["mipsel-cc", "-shared", "-nostdlib"]
     assert "-Wl,-soname,libc.so" in calls[0]
     assert (tmp_path / "sysroot-so" / "lib" / "libc.so").is_file()
+    assert (tmp_path / "sysroot-so" / "lib" / "libc.so.imports").is_file()
     build.ensure_libc_stub(tmp_path, env, run=run)
     assert len(calls) == 1
 
@@ -311,6 +313,7 @@ def test_libc_stub_is_built_once_and_skipped_when_present(tmp_path):
         return subprocess.CompletedProcess(argv, 1)
 
     (tmp_path / "sysroot-so" / "lib" / "libc.so").unlink()
+    (tmp_path / "sysroot-so" / "lib" / "libc.so.imports").unlink()
     with pytest.raises(SystemExit, match="libc.so stub"):
         build.ensure_libc_stub(tmp_path, env, run=fail)
 

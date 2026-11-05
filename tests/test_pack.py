@@ -250,3 +250,39 @@ def test_load_exports_and_names(tmp_path):
     path.write_text("foo\tOPENSSL_1_1_0\nbar\t\n")
     assert pack.load_exports(path) == {("foo", "OPENSSL_1_1_0"), ("bar", "")}
     assert pack.load_names(path) == {"foo", "bar"}
+
+
+def test_exe_accepts_a_dynamic_mips_binary(tmp_path, monkeypatch):
+    path = tmp_path / "openssl"
+    path.write_bytes(b"\x7fELF")
+    monkeypatch.setattr(
+        pack,
+        "_dyn",
+        lambda path, shared=True: _fake_dyn(
+            needed=["libc.so", "libssl.so.1.1", "libcrypto.so.1.1"]
+        ),
+    )
+    assert (
+        pack.exe(
+            path,
+            {"libc.so", "libgcc_s.so.1", "libssl.so.1.1", "libcrypto.so.1.1"},
+        )
+        == b"\x7fELF"
+    )
+
+
+@pytest.mark.parametrize(
+    ("overrides", "match"),
+    [
+        ({"needed": ["libc.so", "libextra.so"]}, "NEEDED"),
+        ({"needed": ["libfoo.so"]}, "libc.so"),
+        ({"tags": {0x6FFFFFFB: 1, 15: 1}}, "RPATH"),
+        ({"stack_x": True}, "PT_GNU_STACK"),
+        ({"fp_abi": 3}, "fp_abi"),
+        ({"data": b"\x7fELF clock_gettime64"}, "time64"),
+    ],
+)
+def test_exe_rejects_a_bad_binary(tmp_path, monkeypatch, overrides, match):
+    monkeypatch.setattr(pack, "_dyn", lambda path, shared=True: _fake_dyn(**overrides))
+    with pytest.raises(SystemExit, match=match):
+        pack.exe(tmp_path / "x", {"libc.so", "libgcc_s.so.1"})
