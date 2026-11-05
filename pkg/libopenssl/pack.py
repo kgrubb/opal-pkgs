@@ -97,7 +97,7 @@ def pack_pkg():
     Depends: libc
     License: OpenSSL
     Section: libs
-    Description: Shared OpenSSL 1.1.1w for the GL-SFT1200 (ABI drop-in for 1.1.1i). Freexian ELTS backports: CVE-2024-2511, CVE-2024-4741, CVE-2024-5535, CVE-2026-45447.
+    Description: Shared OpenSSL 1.1.1w for the GL-SFT1200 (ABI drop-in for 1.1.1i). Freexian ELTS 1.1.1w-0+deb11u8 code backports.
     """,
         [
             ("usr/lib/libcrypto.so.1.1", crypto, 0o644),

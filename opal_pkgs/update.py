@@ -43,7 +43,7 @@ def check_freexian(fetch):
 
 
 # One upstream file, two packages. The follower keeps its own release until the version changes.
-SAME = {"ca-bundle": "ca-certificates"}
+SAME = {"ca-bundle": "ca-certificates", "curl": "libcurl"}
 
 
 def get(url):

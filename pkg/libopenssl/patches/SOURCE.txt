@@ -2,10 +2,9 @@
 # Pinned commit: ed68908f580513af795c955ff8d8aac315895b13
 # 21.02 ended on 1.1.1v; 1.1.1v..1.1.1w does not touch the patched files.
 #
-# Freexian ELTS openssl 1.1.1w-0+deb11u8 (150-156), code fixes only.
+# Freexian ELTS openssl 1.1.1w-0+deb11u8 (150-180), code fixes only.
 # Source: https://deb.freexian.com/extended-lts/pool/main/o/openssl/
 #   openssl_1.1.1w-0+deb11u8.debian.tar.xz
-# Skipped Freexian test-only patches for CVE-2024-5535 (3,4,7,8) and
-# Test-for-CVE-2026-45447 (we only build_libs).
+# Skipped Freexian test-only patches and debian packaging patches.
 # Pin lives in pack.py as FREEXIAN. opal-pkgs update fails when the pool
 # publishes a newer deb11uN; bump the pin and re-vendor code patches by hand.

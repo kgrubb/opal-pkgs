@@ -1,0 +1,6 @@
+{
+  global:
+    curl_*;
+  local:
+    *;
+};
