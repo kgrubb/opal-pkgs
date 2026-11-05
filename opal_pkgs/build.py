@@ -4,6 +4,7 @@ import hashlib
 import os
 import shlex
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -192,14 +193,77 @@ def build_env(root, zig_bin, base=None):
     return env
 
 
+def _libc_a_globals(libc_a):
+    """Global defined symbol names in a static musl libc.a (funcs, objects)."""
+    data = Path(libc_a).read_bytes()
+    if data[:8] != b"!<arch>\n":
+        return set(), set()
+    funcs, objs, off = set(), set(), 8
+    while off + 60 <= len(data):
+        hdr = data[off : off + 60]
+        if hdr[:1] == b"\n":
+            off += 1
+            continue
+        try:
+            size = int(hdr[48:58])
+        except ValueError:
+            break
+        body_off = off + 60
+        body = data[body_off : body_off + size]
+        off = body_off + size + (size & 1)
+        if body[:4] != b"\x7fELF":
+            continue
+        e_shoff = struct.unpack_from("<I", body, 32)[0]
+        e_shentsize, e_shnum, e_shstrndx = struct.unpack_from("<HHH", body, 46)
+
+        def sh(i, _b=body, _o=e_shoff, _e=e_shentsize):
+            return struct.unpack_from("<IIIIIIIIII", _b, _o + i * _e)
+
+        strbase = sh(e_shstrndx)[4]
+        symtab = strtab = None
+        for i in range(e_shnum):
+            s = sh(i)
+            name = body[strbase + s[0] :].split(b"\0", 1)[0]
+            if name == b".symtab":
+                symtab = s
+            elif name == b".strtab":
+                strtab = s
+        if not symtab or not strtab:
+            continue
+        stro = strtab[4]
+        for i in range(symtab[5] // 16):
+            st_name, _v, _sz, st_info, _o, st_shndx = struct.unpack_from(
+                "<IIIBBH", body, symtab[4] + i * 16
+            )
+            bind = st_info >> 4
+            if not st_name or st_shndx == 0 or bind not in (1, 2):
+                continue
+            nm = body[stro + st_name :].split(b"\0", 1)[0].decode()
+            if not nm.isidentifier():
+                continue
+            (funcs if (st_info & 0xF) == 2 else objs).add(nm)
+    return funcs, objs
+
+
+def _libc_stub_source(libc_a):
+    """C stubs so exe links resolve against NEEDED libc.so (bodies unused at runtime)."""
+    funcs, objs = _libc_a_globals(libc_a)
+    lines = ["/* generated from musl libc.a; runtime uses the router's libc.so */"]
+    lines.extend(f"void {n}(void) {{}}" for n in sorted(funcs))
+    lines.extend(f"char {n}[8];" for n in sorted(objs))
+    return "\n".join(lines) + "\n"
+
+
 def ensure_libc_stub(root, env, run=subprocess.run):
-    """Empty libc.so so shared recipes record NEEDED libc.so without a second musl."""
+    """libc.so with musl exports so dyn executables link; shared recipes also NEEDED it."""
     stub = Path(env["SYSROOT_SO"]) / "lib" / "libc.so"
-    if stub.is_file():
+    marker = Path(env["SYSROOT_SO"]) / "lib" / "libc.so.imports"
+    if stub.is_file() and marker.is_file():
         return
     stub.parent.mkdir(parents=True, exist_ok=True)
     source = stub.parent / "empty.c"
-    source.write_text("\n")
+    libc_a = Path(env.get("SYSROOT", "")) / "lib" / "libc.a"
+    source.write_text(_libc_stub_source(libc_a) if libc_a.is_file() else "\n")
     child = dict(env)
     child["CC"] = "mipsel-cc"
     result = run(
@@ -220,6 +284,7 @@ def ensure_libc_stub(root, env, run=subprocess.run):
     if result.returncode != 0:
         show(result)
         raise SystemExit("libc.so stub failed")
+    marker.write_text("imports\n")
     print("built libc.so stub")
 
 

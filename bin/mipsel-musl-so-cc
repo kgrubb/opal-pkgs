@@ -1,11 +1,14 @@
 #!/bin/sh
 # Compile and dynamically link against the musl 1.1.20 sysroot.
 # Pass the libc.so stub by path: zig treats -lc as its own bundled musl 1.2.
+# Shared objects: zig cc, no PT_INTERP. Executables: zig ld.lld + musl INTERP.
 link=1
+shared=0
 for a; do
   shift
   case $a in
     -c|-E|-S|-M|-MM) link=0 ;;
+    -shared) shared=1 ;;
     -lc|-lm|-lpthread|-ldl|-lrt|-lgcc|-lgcc_eh|-pthread) continue ;;
   esac
   set -- "$@" "$a"
@@ -16,7 +19,30 @@ if [ "$link" = 0 ]; then
   exec mipsel-cc -nostdinc -isystem "$SYSROOT/include" \
     -idirafter "$uapi_any" -idirafter "$uapi_mips" "$@"
 fi
-exec mipsel-cc -nostdinc -isystem "$SYSROOT/include" \
-  -idirafter "$uapi_any" -idirafter "$uapi_mips" \
-  -nostdlib -s -Wl,-z,now -Wl,-z,relro -Wl,--hash-style=sysv \
-  "$@" -Wl,--no-as-needed "$SYSROOT_SO/lib/libc.so"
+if [ "$shared" = 1 ]; then
+  exec mipsel-cc -nostdinc -isystem "$SYSROOT/include" \
+    -idirafter "$uapi_any" -idirafter "$uapi_mips" \
+    -nostdlib -s -Wl,-z,now -Wl,-z,relro -Wl,--hash-style=sysv \
+    "$@" -Wl,--no-as-needed "$SYSROOT_SO/lib/libc.so"
+fi
+# Drop compile-only flags openssl (and similar) pass on the link line.
+out=
+set -- "$@" --
+while [ "$1" != -- ]; do
+  a=$1
+  shift
+  case $a in
+    -mabi=*|-Wall|-W*|-O|-O[0-9s]|-g|-g*|-f*|-std=*|-D*|-I*) continue ;;
+    -o) out=$1; shift; continue ;;
+  esac
+  set -- "$@" "$a"
+done
+shift
+exec "$ZIG" ld.lld -m elf32ltsmip --eh-frame-hdr --entry __start \
+  --dynamic-linker=/lib/ld-musl-mipsel.so.1 \
+  -z now -z relro --hash-style=sysv -s \
+  "$SYSROOT/lib/crt1.o" "$SYSROOT/lib/crti.o" \
+  -o "$out" "$@" \
+  --no-as-needed "$SYSROOT_SO/lib/libc.so" \
+  "$SYSROOT/lib/crtn.o" \
+  --allow-shlib-undefined
