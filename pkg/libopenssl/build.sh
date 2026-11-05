@@ -15,6 +15,11 @@ if [ ! -f libssl.so.1.1 ]; then
     no-afalgeng no-hw-padlock no-gost || exit 1
   SOURCE_DATE_EPOCH=1694441316 make -j"$JOBS" build_libs || exit 1
 fi
-if [ ! -x apps/openssl ]; then
-  SOURCE_DATE_EPOCH=1694441316 make -j"$JOBS" build_apps || exit 1
-fi
+# libapps is a static lib linked into the executable, so Configure builds it
+# with -fPIC. lld's MIPS global GOT is not in dynsym order and musl fills it
+# from that order, so those calls land in the wrong function.
+# shortcut: the compile line is the line after an apps/ target. redo this if
+# the generated makefile stops looking like that.
+perl -pi -e 's/\$\(LIB_CFLAGS\)/\$\(BIN_CFLAGS\)/ if $apps; $apps = /^apps\//' Makefile || exit 1
+rm -f apps/*.o apps/libapps.a apps/openssl
+SOURCE_DATE_EPOCH=1694441316 make -j"$JOBS" build_apps || exit 1

@@ -259,7 +259,8 @@ def test_exe_accepts_a_dynamic_mips_binary(tmp_path, monkeypatch):
         pack,
         "_dyn",
         lambda path, shared=True: _fake_dyn(
-            needed=["libc.so", "libssl.so.1.1", "libcrypto.so.1.1"]
+            needed=["libc.so", "libssl.so.1.1", "libcrypto.so.1.1"],
+            tags={0x6FFFFFFB: 1, 0x70000011: 10, 0x70000013: 10},
         ),
     )
     assert (
@@ -279,6 +280,7 @@ def test_exe_accepts_a_dynamic_mips_binary(tmp_path, monkeypatch):
         ({"tags": {0x6FFFFFFB: 1, 15: 1}}, "RPATH"),
         ({"stack_x": True}, "PT_GNU_STACK"),
         ({"fp_abi": 3}, "fp_abi"),
+        ({"tags": {0x6FFFFFFB: 1, 0x70000013: 1}}, "global GOT"),
         ({"data": b"\x7fELF clock_gettime64"}, "time64"),
     ],
 )
