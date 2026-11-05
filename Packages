@@ -334,6 +334,18 @@ Filename: i2c-tools_4.4-3_mips_siflower.ipk
 Size: 739345
 SHA256sum: fb111931b44857a99d374380b09256d29156ca545e1b2d81b19b912e05b9e12e
 
+Package: libcurl
+Version: 8.23.0-1
+Depends: libc, ca-bundle
+License: MIT
+Section: libs
+Description: Shared libcurl with static mbedTLS for the GL-SFT1200. Replaces stock OpenSSL-linked libcurl.
+Architecture: mips_siflower
+Installed-Size: 1957628
+Filename: libcurl_8.23.0-1_mips_siflower.ipk
+Size: 819491
+SHA256sum: 6d6bae5dbd3d22c99d94db4bfbe7c535e061d334a944415a9aaa85db907835de
+
 Package: libopenssl
 Version: 1.1.1w-2
 Depends: libc
@@ -345,6 +357,18 @@ Installed-Size: 3338044
 Filename: libopenssl_1.1.1w-2_mips_siflower.ipk
 Size: 1177154
 SHA256sum: b15013c7862a13041d96992c54c1fd14fe00503dd8bbddae800f59c6a6cfda62
+
+Package: libopenssl
+Version: 1.1.1w-3
+Depends: libc
+License: OpenSSL
+Section: libs
+Description: Shared OpenSSL 1.1.1w for the GL-SFT1200 (ABI drop-in for 1.1.1i). Freexian ELTS 1.1.1w-0+deb11u8 code backports.
+Architecture: mips_siflower
+Installed-Size: 3339888
+Filename: libopenssl_1.1.1w-3_mips_siflower.ipk
+Size: 1177372
+SHA256sum: 4de7c5f6e86bc9eea21459867a9c73081f9568ea5439f0b5365d0ed56bada7f9
 
 Package: snmpd
 Version: 5.9.5.2-1
@@ -477,3 +501,15 @@ Installed-Size: 416460
 Filename: wireguard-tools_1.0.20260223-2_mips_siflower.ipk
 Size: 181903
 SHA256sum: 723c36acf2b5fea087f445488811419e7a08e1161b4d790e4a594fe4202cd240
+
+Package: zlib
+Version: 1.3.1-1
+Depends: libc
+License: Zlib
+Section: libs
+Description: Shared zlib 1.3.1 for the GL-SFT1200 (ABI drop-in for 1.2.11).
+Architecture: mips_siflower
+Installed-Size: 124352
+Filename: zlib_1.3.1-1_mips_siflower.ipk
+Size: 50705
+SHA256sum: 82e0be845b46c4955663368489a8c2762f980433c6f35bf7df4c016a7008ac2d
