@@ -18,6 +18,30 @@ def load_latest():
     return {name: mod.LATEST for name, mod in pack.load_recipes()}
 
 
+def check_freexian(fetch):
+    """Fail when a recipe's Freexian ELTS pin lags the pool (or is ahead of it)."""
+    from . import pack
+
+    errors = []
+    for name, mod in pack.load_recipes():
+        pin = getattr(mod, "FREEXIAN", None)
+        if pin is None:
+            continue
+        page, pattern, pinned = pin
+        found = [int(n) for n in re.findall(pattern, fetch(page).decode())]
+        if not found:
+            errors.append(f"{name}: no Freexian revisions matched on {page}")
+            continue
+        newest = max(found)
+        if newest > pinned:
+            errors.append(
+                f"{name}: Freexian deb11u{newest} available (pinned u{pinned})"
+            )
+        elif newest < pinned:
+            errors.append(f"{name}: Freexian pin u{pinned} ahead of pool max u{newest}")
+    return errors
+
+
 # One upstream file, two packages. The follower keeps its own release until the version changes.
 SAME = {"ca-bundle": "ca-certificates"}
 
@@ -125,6 +149,7 @@ def apply(lines, fetch, latest=None):
 
 def main(fetch=get):
     lines, notes, errors = apply(VERSIONS.read_text().splitlines(), fetch)
+    errors.extend(check_freexian(fetch))
     if notes:
         print("\n".join(notes))
     VERSIONS.write_text("\n".join(lines) + "\n")

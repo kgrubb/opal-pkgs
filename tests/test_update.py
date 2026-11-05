@@ -208,10 +208,53 @@ def test_main_writes_versions_and_fails_when_a_package_errors(
             ["sudo: down"],
         ),
     )
+    monkeypatch.setattr(update, "check_freexian", lambda fetch: [])
     with pytest.raises(SystemExit, match="sudo: down"):
         update.main()
     assert versions.read_text() == "dropbear\t2\t1\tnew\thttps://example.test/a\n"
     assert "- dropbear 1 -> 2" in capsys.readouterr().out
+
+
+def test_check_freexian_reports_a_newer_pool_revision(monkeypatch):
+    class Mod:
+        FREEXIAN = (
+            "https://example.test/openssl/",
+            r"openssl_1\.1\.1w-0(?:\+|%2B)deb11u(\d+)\.debian\.tar\.xz",
+            8,
+        )
+
+    from opal_pkgs import pack
+
+    monkeypatch.setattr(pack, "load_recipes", lambda: [("libopenssl", Mod())])
+    assert update.check_freexian(
+        lambda url: b'href="openssl_1.1.1w-0%2Bdeb11u9.debian.tar.xz"'
+    ) == ["libopenssl: Freexian deb11u9 available (pinned u8)"]
+
+
+def test_check_freexian_accepts_the_pinned_revision(monkeypatch):
+    class Mod:
+        FREEXIAN = (
+            "https://example.test/openssl/",
+            r"openssl_1\.1\.1w-0(?:\+|%2B)deb11u(\d+)\.debian\.tar\.xz",
+            8,
+        )
+
+    from opal_pkgs import pack
+
+    monkeypatch.setattr(pack, "load_recipes", lambda: [("libopenssl", Mod())])
+    assert (
+        update.check_freexian(
+            lambda url: b'href="openssl_1.1.1w-0+deb11u8.debian.tar.xz"'
+        )
+        == []
+    )
+
+
+def test_check_freexian_skips_recipes_without_a_pin(monkeypatch):
+    from opal_pkgs import pack
+
+    monkeypatch.setattr(pack, "load_recipes", lambda: [("ethtool", object())])
+    assert update.check_freexian(lambda url: b"") == []
 
 
 def ok(cmd, capture_output=True):

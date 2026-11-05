@@ -40,4 +40,6 @@ name	version	release	sha256	url
 
 A library is only the `versions` row. The recipe that uses it calls `unpack name` and `ver name`.
 
+`pkg/libopenssl` ships a shared library through `bin/mipsel-musl-so-cc` and `so()`.
+
 `pkg/dnscrypt-proxy` ships `dnscrypt-proxy2`. `ca-certificates` is the second ipk from `pkg/ca-bundle`.

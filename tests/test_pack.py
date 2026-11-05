@@ -188,3 +188,65 @@ def test_main_skips_packages_that_failed(monkeypatch, tmp_path):
     monkeypatch.setattr(pack, "OUT", tmp_path / "out")
     pack.main()
     assert list((tmp_path / "out").glob("*.ipk")) == []
+
+
+def test_so_accepts_a_known_good_shared_object():
+    path = Path(__file__).parent / "fixtures" / "libt.so"
+    data = pack.so(path, "libt.so", {"libc.so"}, [], {("foo", "")}, undef_allow=set())
+    assert data[:4] == b"\x7fELF"
+    assert pack._dyn(path)["soname"] == "libt.so"
+
+
+def _fake_dyn(**overrides):
+    info = {
+        "data": b"\x7fELF",
+        "e_flags": 0x1005,
+        "needed": ["libc.so"],
+        "soname": "libt.so",
+        "verdef": [],
+        "exports": {("foo", "")},
+        "undef": [],
+        "tags": {0x6FFFFFFB: 1},
+        "fp_abi": 1,
+        "stack_x": False,
+    }
+    info.update(overrides)
+    return info
+
+
+@pytest.mark.parametrize(
+    ("overrides", "match"),
+    [
+        ({"soname": "wrong.so"}, "SONAME"),
+        ({"needed": ["libc.so", "libextra.so"]}, "NEEDED"),
+        ({"exports": set()}, "missing exports"),
+        ({"undef": [("__clock_gettime64", "libc.so", "")]}, "time64"),
+        ({"needed": ["libfoo.so"]}, "libc.so"),
+        ({"tags": {0x6FFFFFFB: 1, 15: 1}}, "RPATH"),
+        ({"tags": {0x6FFFFFFB: 1, 22: 1}}, "TEXTREL"),
+        ({"tags": {0x6FFFFFFB: 0}}, "NOW"),
+        ({"stack_x": True}, "PT_GNU_STACK"),
+        ({"fp_abi": 3}, "fp_abi"),
+        ({"verdef": ["OPENSSL_1_1_0"]}, "verdefs"),
+        ({"undef": [("mystery", "libx.so", "")]}, "unresolved"),
+    ],
+)
+def test_so_rejects_a_bad_shared_object(tmp_path, monkeypatch, overrides, match):
+    monkeypatch.setattr(pack, "_dyn", lambda path: _fake_dyn(**overrides))
+    allow = {"__clock_gettime64"} if "time64" in match else set()
+    with pytest.raises(SystemExit, match=match):
+        pack.so(
+            tmp_path / "x",
+            "libt.so",
+            {"libc.so"},
+            [],
+            {("foo", "")},
+            undef_allow=allow,
+        )
+
+
+def test_load_exports_and_names(tmp_path):
+    path = tmp_path / "e"
+    path.write_text("foo\tOPENSSL_1_1_0\nbar\t\n")
+    assert pack.load_exports(path) == {("foo", "OPENSSL_1_1_0"), ("bar", "")}
+    assert pack.load_names(path) == {"foo", "bar"}
