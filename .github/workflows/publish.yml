@@ -1,0 +1,59 @@
+name: publish
+
+on:
+  workflow_call:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      UPDATE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: true
+      - uses: actions/download-artifact@v8.0.2
+        with:
+          name: packages
+          path: fetched
+      - name: Commit version bumps
+        run: |
+          cp fetched/versions versions
+          git diff --quiet versions && exit 0
+          # git diff exits 1 when versions changed. The body is that diff, after failed pins were put back.
+          msg=$(git diff -- versions || true)
+          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            commit -m "chore: update packages" -m "$msg" versions
+          git push
+      - uses: actions/checkout@v7.0.1
+        with:
+          ref: feed
+          path: feed
+          persist-credentials: true
+      # The feed is append-only: a published filename is never replaced or removed.
+      - name: Publish new ipks
+        run: |
+          # No match must not leave the pattern as a literal path. An empty out still reaches the fail step.
+          shopt -s nullglob
+          for f in fetched/out/*.ipk; do [ -e "feed/${f##*/}" ] || cp "$f" feed/; done
+          python3 -m opal_pkgs.cli index feed
+          cd feed
+          git add -A
+          git diff --cached --quiet && exit 0
+          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            commit -m "chore: publish $(git diff --cached --name-only -- '*.ipk' | xargs)"
+          git push
+      - uses: actions/upload-pages-artifact@v5.0.0
+        with:
+          path: feed
+      # After the upload, so a package that did build still reaches the feed.
+      - name: Fail if a package was skipped
+        if: env.UPDATE == 'true'
+        run: |
+          if [ -s fetched/work/failed ] || [ -f fetched/work/update.failed ]; then
+            echo "a package did not update or build" >&2
+            cat fetched/work/failed >&2 || true
+            exit 1
+          fi

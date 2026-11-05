@@ -1,0 +1,54 @@
+name: test
+
+on:
+  workflow_call:
+
+# Steps in one job run in order. Separate jobs run at the same time.
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          python-version: "3.15"
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run ruff format --check .
+
+  lint:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          python-version: "3.15"
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+
+  pytest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          python-version: "3.15"
+          enable-cache: true
+      - run: uv sync --frozen
+      - run: uv run pytest

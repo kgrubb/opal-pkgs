@@ -1,0 +1,27 @@
+name: deploy
+
+on:
+  workflow_call:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.retry.outputs.page_url || steps.deploy.outputs.page_url }}
+    steps:
+      # Pages sometimes stays on updating_pages until this action gives up.
+      # A healthy deploy finishes in under a minute, so try once more.
+      - id: deploy
+        continue-on-error: true
+        uses: actions/deploy-pages@v5.0.1
+        with:
+          timeout: 180000
+      - id: retry
+        if: steps.deploy.outcome == 'failure'
+        uses: actions/deploy-pages@v5.0.1
+        with:
+          timeout: 180000

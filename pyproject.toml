@@ -1,0 +1,27 @@
+[project]
+name = "opal-pkgs"
+version = "0.0.0"
+description = "Newer upstream packages for the GL.iNet Opal"
+requires-python = ">=3.15"
+readme = "README.md"
+
+[project.scripts]
+opal-pkgs = "opal_pkgs.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.17.3",
+]
+
+[tool.pytest.ini_options]
+addopts = "--cov --cov-fail-under=85"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["opal_pkgs"]

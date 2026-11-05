@@ -1,0 +1,88 @@
+name: build
+
+on:
+  workflow_call:
+    outputs:
+      built:
+        description: true when this run compiled packages
+        value: ${{ jobs.build.outputs.built }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      built: ${{ steps.plan.outputs.build }}
+    env:
+      UPDATE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+      PUBLISH: ${{ github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.13.6"
+          python-version: "3.15"
+          enable-cache: true
+      - run: uv sync --frozen
+      - name: Check upstream releases
+        id: upstream
+        if: env.UPDATE == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq minisign
+          mkdir -p work
+          cp versions "$RUNNER_TEMP/versions.base"
+          set -o pipefail
+          uv run opal-pkgs update | tee "$RUNNER_TEMP/changes" || echo > work/update.failed
+          if git diff --quiet -- versions; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      # A push builds. The Monday run builds only when a pin changed.
+      - name: Decide whether to build
+        id: plan
+        run: |
+          if [ "$UPDATE" != true ] || [ "${{ steps.upstream.outputs.changed }}" = true ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v7.0.1
+        if: env.PUBLISH == 'true' && steps.plan.outputs.build == 'true'
+        with:
+          ref: feed
+          path: feed
+          persist-credentials: false
+      - name: Compile
+        run: uv run opal-pkgs build
+        if: steps.plan.outputs.build == 'true'
+        env:
+          VERSIONS_BASE: ${{ runner.temp }}/versions.base
+      - name: Collect publish files
+        if: env.PUBLISH == 'true' && steps.plan.outputs.build == 'true'
+        run: |
+          stage="$RUNNER_TEMP/packages"
+          mkdir -p "$stage/out" "$stage/work"
+          cp -a out/. "$stage/out/"
+          cp versions "$stage/versions"
+          cp work/failed "$stage/work/failed"
+          if [ -f work/update.failed ]; then
+            cp work/update.failed "$stage/work/update.failed"
+          fi
+      - uses: actions/upload-artifact@v7.0.2
+        if: env.PUBLISH == 'true' && steps.plan.outputs.build == 'true'
+        with:
+          name: packages
+          path: ${{ runner.temp }}/packages
+      # Nothing was published, so this is the only place the Monday update can fail the run.
+      - name: Fail if the update failed
+        if: env.UPDATE == 'true' && steps.plan.outputs.build != 'true'
+        run: |
+          if [ -f work/update.failed ]; then
+            echo "a package did not update" >&2
+            exit 1
+          fi
