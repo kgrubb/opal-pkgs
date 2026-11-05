@@ -485,6 +485,18 @@ Filename: libcurl_8.23.0-3_mips_siflower.ipk
 Size: 829344
 SHA256sum: 40b7ac42812289aff0db3da1abac7cfe2134f4bc6d13e116718971b2680711b4
 
+Package: libcurl
+Version: 8.23.0-4
+Depends: libc, ca-bundle
+License: MIT
+Section: libs
+Description: client-side URL transfer library (mbedTLS)
+Architecture: mips_siflower
+Installed-Size: 1711372
+Filename: libcurl_8.23.0-4_mips_siflower.ipk
+Size: 715126
+SHA256sum: 20b040f77d11225c30a6c69678b861b28b427cd49a6d0f0aeb7d97a7e0032a1d
+
 Package: libopenssl
 Version: 1.1.1w-2
 Depends: libc
@@ -520,6 +532,42 @@ Installed-Size: 3339888
 Filename: libopenssl_1.1.1w-4_mips_siflower.ipk
 Size: 1177359
 SHA256sum: f394b81fa71fe3de40c9f3c81597b0c3901d6ef64adc64f3958b5a63c10f2d59
+
+Package: libopenssl
+Version: 1.1.1w-5
+Depends: libc
+License: OpenSSL
+Section: libs
+Description: Open source SSL toolkit (libraries)
+Architecture: mips_siflower
+Installed-Size: 3306796
+Filename: libopenssl_1.1.1w-5_mips_siflower.ipk
+Size: 1174198
+SHA256sum: 581b690bb112421f25fb2053db7aad6c8fd10cd0c573cbbfd3789757d055e142
+
+Package: libustream-openssl
+Version: 20221208-1
+Depends: libc, libubox, libopenssl
+License: ISC
+Section: libs
+Description: ustream SSL Library (openssl)
+Architecture: mips_siflower
+Installed-Size: 12892
+Filename: libustream-openssl_20221208-1_mips_siflower.ipk
+Size: 5373
+SHA256sum: c4c9f497bdb441aa5f9520689e3d27173bd85b49432726b55aa107aea8c14366
+
+Package: openssl-util
+Version: 1.1.1w-1
+Depends: libc, libopenssl, libopenssl-conf
+License: OpenSSL
+Section: utils
+Description: Open source SSL toolkit (utility)
+Architecture: mips_siflower
+Installed-Size: 649664
+Filename: openssl-util_1.1.1w-1_mips_siflower.ipk
+Size: 241288
+SHA256sum: 50c7d46cce0dd68457905a880960c71813bbceaebe04e2728b7020f88f252ffa
 
 Package: snmpd
 Version: 5.9.5.2-1
@@ -736,3 +784,15 @@ Installed-Size: 124352
 Filename: zlib_1.3.1-3_mips_siflower.ipk
 Size: 50761
 SHA256sum: e791b356d743fe7f0748070a209f9a89962b5741022b9136f42f098c53749f09
+
+Package: zlib
+Version: 1.3.1-4
+Depends: libc
+License: Zlib
+Section: libs
+Description: zlib 1.3.1 shared library, ABI-compatible with 1.2.11
+Architecture: mips_siflower
+Installed-Size: 107532
+Filename: zlib_1.3.1-4_mips_siflower.ipk
+Size: 48878
+SHA256sum: 9a9ad757dbffd0e729280c494ced1c83336e59755fcc1111f500ce9a8771a1e8
