@@ -473,6 +473,18 @@ Filename: libcurl_8.23.0-2_mips_siflower.ipk
 Size: 819466
 SHA256sum: 3a92e4ed7e44823eacc17e7421f3a6c2077c194085eca792fe868c714aac52f3
 
+Package: libcurl
+Version: 8.23.0-3
+Depends: libc, ca-bundle
+License: MIT
+Section: libs
+Description: client-side URL transfer library (mbedTLS)
+Architecture: mips_siflower
+Installed-Size: 1981784
+Filename: libcurl_8.23.0-3_mips_siflower.ipk
+Size: 829344
+SHA256sum: 40b7ac42812289aff0db3da1abac7cfe2134f4bc6d13e116718971b2680711b4
+
 Package: libopenssl
 Version: 1.1.1w-2
 Depends: libc
@@ -712,3 +724,15 @@ Installed-Size: 124352
 Filename: zlib_1.3.1-2_mips_siflower.ipk
 Size: 50697
 SHA256sum: 1fb877f4175052cb3ded66ed184d97ccd27ccf9bdc25b657d35854bc3b4c64d1
+
+Package: zlib
+Version: 1.3.1-3
+Depends: libc
+License: Zlib
+Section: libs
+Description: zlib 1.3.1 shared library, ABI-compatible with 1.2.11
+Architecture: mips_siflower
+Installed-Size: 124352
+Filename: zlib_1.3.1-3_mips_siflower.ipk
+Size: 50761
+SHA256sum: e791b356d743fe7f0748070a209f9a89962b5741022b9136f42f098c53749f09
