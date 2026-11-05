@@ -72,5 +72,6 @@ def pack_pkg():
     """,
         [
             ("usr/lib/libz.so.1", data, 0o644),
+            ("usr/lib/libz.so", "libz.so.1"),
         ],
     )

@@ -1,0 +1,11 @@
+--- a/lib/setopt.c
++++ b/lib/setopt.c
+@@ -2212,7 +2212,7 @@ static CURLcode setopt_cptr_ftp(struct Curl_easy *data, CURLoption option,
+     return Curl_setstropt(data, STRING_FTP_ALTERNATIVE_TO_USER, ptr);
+ 
+   case CURLOPT_KRBLEVEL:
+-    return CURLE_NOT_BUILT_IN; /* removed in 8.17.0 */
++    return CURLE_OK; /* removed in 8.17.0; no-op for OpenWrt curl 7.63 */
+   case CURLOPT_CHUNK_DATA:
+     s->wildcardptr = ptr;
+     break;

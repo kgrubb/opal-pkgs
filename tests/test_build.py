@@ -210,6 +210,22 @@ def test_package_scripts_are_not_wrapped_in_an_if():
         assert "if ! (" not in path.read_text()
 
 
+def test_libcurl_keeps_stock_openwrt_curl_setopt_compat():
+    # Stock curl 7.63 always setopts INTERLEAVEDATA, TELNETOPTIONS, and KRBLEVEL.
+    recipe = (ROOT / "pkg" / "libcurl" / "build.sh").read_text()
+    assert "--disable-rtsp" not in recipe
+    assert "--disable-telnet" not in recipe
+    patch = (
+        ROOT
+        / "pkg"
+        / "libcurl"
+        / "patches"
+        / "001-krblevel-noop-for-openwrt-curl.patch"
+    ).read_text()
+    assert "CURLOPT_KRBLEVEL" in patch
+    assert "return CURLE_OK" in patch
+
+
 @pytest.mark.parametrize(
     ("uname", "zig"),
     [
