@@ -54,6 +54,195 @@ def elf(path):
     return data
 
 
+def _cstr(data, offset):
+    return data[offset : data.index(b"\0", offset)].decode()
+
+
+def _dyn(path):
+    """Parse a section-stripped MIPS32 LE ET_DYN. Raises SystemExit on refusal."""
+    data = Path(path).read_bytes()
+    if data[:6] != b"\x7fELF\x01\x01" or struct.unpack_from("<H", data, 18)[0] != 8:
+        raise SystemExit(f"{path}: not a 32-bit little-endian MIPS ELF")
+    e_type = struct.unpack_from("<H", data, 16)[0]
+    if e_type != 3:
+        raise SystemExit(f"{path}: not ET_DYN")
+    e_flags = struct.unpack_from("<I", data, 36)[0]
+    # EF_MIPS_ABI_O32 = 0x1000; EF_MIPS_ABI2 (n32) = 0x20.
+    if e_flags & 0x20:
+        raise SystemExit(f"{path}: not o32")
+    if not (e_flags & 0x1000):
+        raise SystemExit(f"{path}: missing EF_MIPS_ABI_O32")
+    (phoff,) = struct.unpack_from("<I", data, 28)
+    phentsize, phnum = struct.unpack_from("<HH", data, 42)
+    loads, dyn_off, dyn_sz, has_interp, stack_x = [], None, 0, False, False
+    for i in range(phnum):
+        off = phoff + i * phentsize
+        ptype, poff, pva, _pa, pfs, _pms, pfl, _al = struct.unpack_from(
+            "<8I", data, off
+        )
+        if ptype == 1:
+            loads.append((pva, poff, pfs))
+        elif ptype == 2:
+            dyn_off, dyn_sz = poff, pfs
+        elif ptype == 3:
+            has_interp = True
+        elif ptype == 0x6474E551 and pfl & 1:
+            stack_x = True
+    if has_interp:
+        raise SystemExit(f"{path}: has PT_INTERP")
+    if dyn_off is None:
+        raise SystemExit(f"{path}: no PT_DYNAMIC")
+
+    def v2o(va):
+        for base, file_off, filesz in loads:
+            if base <= va < base + filesz:
+                return va - base + file_off
+        raise SystemExit(f"{path}: VA {va:#x} not in PT_LOAD")
+
+    tags, needed = {}, []
+    for i in range(0, dyn_sz, 8):
+        tag, val = struct.unpack_from("<iI", data, dyn_off + i)
+        if tag == 0:
+            break
+        if tag == 1:
+            needed.append(val)
+        else:
+            tags.setdefault(tag, val)
+    if 5 not in tags:
+        raise SystemExit(f"{path}: no DT_STRTAB")
+    stro = v2o(tags[5])
+    name = lambda x: _cstr(data, stro + x)
+    needed_names = [name(x) for x in needed]
+    soname = name(tags[14]) if 14 in tags else None
+    verdef = {}
+    if 0x6FFFFFFC in tags:
+        o = v2o(tags[0x6FFFFFFC])
+        for _ in range(tags.get(0x6FFFFFFD, 0)):
+            _ver, _flags, ndx, _cnt, _h, aux, nxt = struct.unpack_from(
+                "<HHHHIII", data, o
+            )
+            verdef[ndx] = name(struct.unpack_from("<I", data, o + aux)[0])
+            if not nxt:
+                break
+            o += nxt
+    verneed = {}
+    if 0x6FFFFFFE in tags:
+        o = v2o(tags[0x6FFFFFFE])
+        for _ in range(tags.get(0x6FFFFFFF, 0)):
+            _ver, cnt, file, aux, nxt = struct.unpack_from("<HHIII", data, o)
+            a = o + aux
+            for _ in range(cnt):
+                _h, _fl, other, n, anext = struct.unpack_from("<IHHII", data, a)
+                verneed[other] = (name(file), name(n))
+                if not anext:
+                    break
+                a += anext
+            if not nxt:
+                break
+            o += nxt
+    exports, undef = set(), []
+    if 6 in tags and 0x70000011 in tags:
+        so = v2o(tags[6])
+        vs = v2o(tags[0x6FFFFFF0]) if 0x6FFFFFF0 in tags else None
+        for i in range(tags[0x70000011]):
+            n, _val, _sz, info, _oth, shn = struct.unpack_from(
+                "<IIIBBH", data, so + 16 * i
+            )
+            if not n:
+                continue
+            ver = struct.unpack_from("<H", data, vs + 2 * i)[0] & 0x7FFF if vs else 0
+            nm = name(n)
+            bind = info >> 4
+            if shn == 0:
+                if bind in (1, 2):  # GLOBAL or WEAK
+                    undef.append(
+                        (
+                            nm,
+                            verneed.get(ver, ("", ""))[0],
+                            verneed.get(ver, ("", ""))[1],
+                        )
+                    )
+            elif bind in (1, 2):
+                exports.add((nm, verdef.get(ver, "")))
+    # MIPS ABI flags note (PT_MIPS_ABIFLAGS = 0x70000003)
+    fp_abi = None
+    for i in range(phnum):
+        off = phoff + i * phentsize
+        ptype, poff = struct.unpack_from("<II", data, off)[:2]
+        if ptype == 0x70000003 and poff + 8 <= len(data):
+            # version, isa_level, isa_rev, gpr_size, cpr1_size, cpr2_size, fp_abi
+            fp_abi = data[poff + 7]
+            break
+    return {
+        "data": data,
+        "e_flags": e_flags,
+        "needed": needed_names,
+        "soname": soname,
+        "verdef": [verdef[k] for k in sorted(verdef)],
+        "exports": exports,
+        "undef": undef,
+        "tags": tags,
+        "fp_abi": fp_abi,
+        "stack_x": stack_x,
+    }
+
+
+def so(path, soname, needed_allow, verdefs, exports_required, undef_allow=None):
+    """Refuse a shared object that the Opal's musl loader would reject or misbind."""
+    info = _dyn(path)
+    if info["soname"] != soname:
+        raise SystemExit(f"{path}: SONAME {info['soname']!r} != {soname!r}")
+    needed = set(info["needed"])
+    allow = set(needed_allow)
+    if not needed <= allow:
+        raise SystemExit(f"{path}: NEEDED {sorted(needed)} not in {sorted(allow)}")
+    if "libc.so" not in needed:
+        raise SystemExit(f"{path}: NEEDED missing libc.so")
+    tags = info["tags"]
+    if 15 in tags or 29 in tags:
+        raise SystemExit(f"{path}: has DT_RPATH/DT_RUNPATH")
+    if 22 in tags:
+        raise SystemExit(f"{path}: has DT_TEXTREL")
+    flags_1 = tags.get(0x6FFFFFFB, 0)
+    if not (flags_1 & 1):  # DF_1_NOW
+        raise SystemExit(f"{path}: FLAGS_1 missing NOW")
+    if info["stack_x"]:
+        raise SystemExit(f"{path}: executable PT_GNU_STACK")
+    if info["fp_abi"] is not None and info["fp_abi"] != 1:
+        raise SystemExit(f"{path}: fp_abi={info['fp_abi']} (want 1)")
+    if set(info["verdef"]) != set(verdefs):
+        raise SystemExit(f"{path}: verdefs {info['verdef']} != {list(verdefs)}")
+    required = set(exports_required)
+    if not required <= info["exports"]:
+        missing = sorted(required - info["exports"])[:5]
+        raise SystemExit(f"{path}: missing exports e.g. {missing}")
+    if undef_allow is not None:
+        for nm, file, _ver in info["undef"]:
+            if nm not in undef_allow:
+                raise SystemExit(f"{path}: unresolved {nm} from {file or '?'}")
+            if "time64" in nm:
+                raise SystemExit(f"{path}: needs time64 syscalls ({nm})")
+    return info["data"]
+
+
+def load_exports(path):
+    """Read a name\\tversion fixture into a set of (name, version) pairs."""
+    out = set()
+    for line in Path(path).read_text().splitlines():
+        if not line:
+            continue
+        name, _, ver = line.partition("\t")
+        out.add((name, ver))
+    return out
+
+
+def load_names(path):
+    """Read the first column of a name\\t... fixture as a set of names."""
+    return {
+        line.split("\t", 1)[0] for line in Path(path).read_text().splitlines() if line
+    }
+
+
 def tgz(entries):
     """entries: (path, bytes, mode) for files, (path, target) for symlinks."""
     buf = io.BytesIO()
@@ -175,6 +364,9 @@ def main():
         "FAILED": failed,
         "pack": pack,
         "elf": elf,
+        "so": so,
+        "load_exports": load_exports,
+        "load_names": load_names,
         "tree": tree,
         "version": version,
         "WORK": WORK,

@@ -183,12 +183,44 @@ def build_env(root, zig_bin, base=None):
     env = os.environ.copy() if base is None else dict(base)
     env["ZIG"] = str(zig_bin)
     env["SYSROOT"] = str(root / "work" / "sysroot")
+    env["SYSROOT_SO"] = str(root / "work" / "sysroot-so")
     env["PATH"] = str(root / "bin") + os.pathsep + env.get("PATH", "")
     env["PKG_CONFIG_LIBDIR"] = "/nonexistent"
     env["CC"] = "mipsel-musl-cc"
     env["ROOT"] = str(root)
     env["WORK"] = str(root / "work")
     return env
+
+
+def ensure_libc_stub(root, env, run=subprocess.run):
+    """Empty libc.so so shared recipes record NEEDED libc.so without a second musl."""
+    stub = Path(env["SYSROOT_SO"]) / "lib" / "libc.so"
+    if stub.is_file():
+        return
+    stub.parent.mkdir(parents=True, exist_ok=True)
+    source = stub.parent / "empty.c"
+    source.write_text("\n")
+    child = dict(env)
+    child["CC"] = "mipsel-cc"
+    result = run(
+        [
+            "mipsel-cc",
+            "-shared",
+            "-nostdlib",
+            "-Wl,-soname,libc.so",
+            "-o",
+            str(stub),
+            str(source),
+        ],
+        cwd=stub.parent,
+        env=child,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        show(result)
+        raise SystemExit("libc.so stub failed")
+    print("built libc.so stub")
 
 
 def check_time_t(cc, work, env, run=subprocess.run):
@@ -267,6 +299,7 @@ def toolchain(root, uname, jobs, run, fetch):
     env["JOBS"] = str(jobs)
     ensure_musl(root, jobs, env, run=run, fetch=fetch)
     check_time_t(env["CC"], root / "work", env, run=run)
+    ensure_libc_stub(root, env, run=run)
     return env
 
 

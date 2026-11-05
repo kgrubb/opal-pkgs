@@ -1,0 +1,22 @@
+#!/bin/sh
+# Compile and dynamically link against the musl 1.1.20 sysroot.
+# Pass the libc.so stub by path: zig treats -lc as its own bundled musl 1.2.
+link=1
+for a; do
+  shift
+  case $a in
+    -c|-E|-S|-M|-MM) link=0 ;;
+    -lc|-lm|-lpthread|-ldl|-lrt|-lgcc|-lgcc_eh|-pthread) continue ;;
+  esac
+  set -- "$@" "$a"
+done
+uapi_any="${ZIG%/*}/lib/libc/include/any-linux-any"
+uapi_mips="${ZIG%/*}/lib/libc/include/mips-linux-any"
+if [ "$link" = 0 ]; then
+  exec mipsel-cc -nostdinc -isystem "$SYSROOT/include" \
+    -idirafter "$uapi_any" -idirafter "$uapi_mips" "$@"
+fi
+exec mipsel-cc -nostdinc -isystem "$SYSROOT/include" \
+  -idirafter "$uapi_any" -idirafter "$uapi_mips" \
+  -nostdlib -s -Wl,-z,now -Wl,-z,relro -Wl,--hash-style=sysv \
+  "$@" -Wl,--no-as-needed "$SYSROOT_SO/lib/libc.so"
