@@ -24,7 +24,7 @@ jobs:
           git diff --quiet versions && exit 0
           # git diff exits 1 when versions changed. The body is that diff, after failed pins were put back.
           msg=$(git diff -- versions || true)
-          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
             commit -m "chore: update packages" -m "$msg" versions
           git push
       - uses: actions/checkout@v7.0.1
@@ -42,7 +42,8 @@ jobs:
           cd feed
           git add -A
           git diff --cached --quiet && exit 0
-          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+          # Quote [bot]: nullglob above would otherwise drop the whole -c argument.
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
             commit -m "chore: publish $(git diff --cached --name-only -- '*.ipk' | xargs)"
           git push
       - uses: actions/upload-pages-artifact@v5.0.0
