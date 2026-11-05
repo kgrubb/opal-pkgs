@@ -192,7 +192,7 @@ def _dyn(path, *, shared=True):
     }
 
 
-def exe(path, needed_allow):
+def exe(path, needed_allow, needed_required=()):
     """Refuse a dynamically linked MIPS32 LE executable the Opal would reject."""
     info = _dyn(path, shared=False)
     needed = set(info["needed"])
@@ -201,6 +201,9 @@ def exe(path, needed_allow):
         raise SystemExit(f"{path}: NEEDED {sorted(needed)} not in {sorted(allow)}")
     if "libc.so" not in needed:
         raise SystemExit(f"{path}: NEEDED missing libc.so")
+    for name in needed_required:
+        if name not in needed:
+            raise SystemExit(f"{path}: NEEDED missing {name}")
     if 15 in info["tags"] or 29 in info["tags"]:
         raise SystemExit(f"{path}: has DT_RPATH/DT_RUNPATH")
     if info["stack_x"]:

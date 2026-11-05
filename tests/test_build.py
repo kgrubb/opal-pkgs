@@ -318,6 +318,21 @@ def test_libc_stub_is_built_once_and_skipped_when_present(tmp_path):
         build.ensure_libc_stub(tmp_path, env, run=fail)
 
 
+def test_libgcc_stub_records_the_router_soname(tmp_path):
+    env = {"SYSROOT_SO": str(tmp_path / "sysroot-so"), "PATH": os.environ["PATH"]}
+    calls = []
+
+    def run(argv, cwd=None, env=None, **kwargs):
+        calls.append(argv)
+        Path(argv[argv.index("-o") + 1]).write_bytes(b"stub")
+        return subprocess.CompletedProcess(argv, 0)
+
+    build.ensure_libgcc_stub(tmp_path, env, run=run)
+    assert "-Wl,-soname,libgcc_s.so.1" in calls[0]
+    build.ensure_libgcc_stub(tmp_path, env, run=run)
+    assert len(calls) == 1
+
+
 def test_time_t_check_compiles_the_32_bit_assertion(tmp_path):
     seen = []
     env = {"PATH": str(tmp_path / "bin"), "ZIG": "/zig", "SYSROOT": "/sysroot"}

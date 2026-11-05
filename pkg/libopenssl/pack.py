@@ -110,6 +110,7 @@ def pack_pkg():
     openssl = exe(
         root / "apps" / "openssl",
         {"libc.so", "libgcc_s.so.1", "libcrypto.so.1.1", "libssl.so.1.1"},
+        needed_required=("libgcc_s.so.1",),
     )
     pack(
         "openssl-util",
