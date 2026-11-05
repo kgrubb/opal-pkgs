@@ -1,24 +1,22 @@
-#!/usr/bin/env python3
-"""Pack the trees built by build.sh into replacement ipks in out/."""
+"""Pack the trees built by opal-pkgs build into replacement ipks in out/."""
+
 import gzip
 import importlib.util
 import io
-import re
 import struct
-import subprocess
 import tarfile
 import textwrap
 from pathlib import Path
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).resolve().parents[1]
 WORK = ROOT / "work"
-FILES = ROOT / "files"
 OUT = ROOT / "out"
 PINS = {
     line.split("\t")[0]: line.split("\t")
     for line in (ROOT / "versions").read_text().splitlines()
     if line and not line.startswith("#")
 }
+FAILED = set()
 
 POSTINST = b"""#!/bin/sh
 [ "${IPKG_NO_SCRIPT}" = "1" ] && exit 0
@@ -42,13 +40,14 @@ def tree(name):
 
 
 def elf(path):
-    """Read a binary and refuse anything that will not run on the Opal's kernel and libc."""
     data = Path(path).read_bytes()
     if data[:6] != b"\x7fELF\x01\x01" or struct.unpack_from("<H", data, 18)[0] != 8:
         raise SystemExit(f"{path}: not a 32-bit little-endian MIPS ELF")
-    phoff, = struct.unpack_from("<I", data, 28)
+    (phoff,) = struct.unpack_from("<I", data, 28)
     size, count = struct.unpack_from("<HH", data, 42)
-    if any(struct.unpack_from("<I", data, phoff + i * size)[0] == 3 for i in range(count)):
+    if any(
+        struct.unpack_from("<I", data, phoff + i * size)[0] == 3 for i in range(count)
+    ):
         raise SystemExit(f"{path}: dynamically linked")
     if b"clock_gettime64" in data:
         raise SystemExit(f"{path}: needs time64 syscalls")
@@ -58,7 +57,10 @@ def elf(path):
 def tgz(entries):
     """entries: (path, bytes, mode) for files, (path, target) for symlinks."""
     buf = io.BytesIO()
-    with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz, tarfile.open(fileobj=gz, mode="w") as tf:
+    with (
+        gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz,
+        tarfile.open(fileobj=gz, mode="w") as tf,
+    ):
         for path, *rest in entries:
             info = tarfile.TarInfo("./" + path)
             info.uname = info.gname = "root"
@@ -74,7 +76,10 @@ def tgz(entries):
 def ipk(members):
     """This opkg is the 2017 one and installs the gzip tar its own packages use."""
     buf = io.BytesIO()
-    with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz, tarfile.open(fileobj=gz, mode="w") as tf:
+    with (
+        gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz,
+        tarfile.open(fileobj=gz, mode="w") as tf,
+    ):
         for name, data in members:
             info = tarfile.TarInfo("./" + name)
             info.size, info.mode = len(data), 0o644
@@ -116,10 +121,22 @@ def pack(package, pin, arch, control, entries, conffiles=()):
         full = f"{version(pin).replace('-', '')}-{rel}"
         size = sum(len(e[1]) for e in entries if len(e) == 3)
         body = f"Package: {package}\nVersion: {full}\n{textwrap.dedent(control).strip()}\nArchitecture: {arch}\nInstalled-Size: {size}\n"
-        meta = [("control", body.encode(), 0o644), ("postinst", POSTINST, 0o755), ("prerm", PRERM, 0o755)]
+        meta = [
+            ("control", body.encode(), 0o644),
+            ("postinst", POSTINST, 0o755),
+            ("prerm", PRERM, 0o755),
+        ]
         if conffiles:
-            meta.append(("conffiles", "".join(f"{c}\n" for c in conffiles).encode(), 0o644))
-        return ipk([("debian-binary", b"2.0\n"), ("data.tar.gz", tgz(entries)), ("control.tar.gz", tgz(meta))])
+            meta.append(
+                ("conffiles", "".join(f"{c}\n" for c in conffiles).encode(), 0o644)
+            )
+        return ipk(
+            [
+                ("debian-binary", b"2.0\n"),
+                ("data.tar.gz", tgz(entries)),
+                ("control.tar.gz", tgz(meta)),
+            ]
+        )
 
     release, blob = settle(ROOT / "feed", PINS[pin][2], name_for, blob_for)
     if release != PINS[pin][2]:
@@ -129,6 +146,7 @@ def pack(package, pin, arch, control, entries, conffiles=()):
     path.write_bytes(blob)
     print(path.name)
 
+
 def load_recipes():
     """Each shipped package is pkg/<pin>/pack.py."""
     found = []
@@ -136,7 +154,9 @@ def load_recipes():
         script = directory / "pack.py"
         if not script.is_file():
             continue
-        spec = importlib.util.spec_from_file_location("opal_" + directory.name.replace("-", "_"), script)
+        spec = importlib.util.spec_from_file_location(
+            "opal_" + directory.name.replace("-", "_"), script
+        )
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         found.append((directory.name, mod))
@@ -145,17 +165,23 @@ def load_recipes():
 
 def main():
     OUT.mkdir(exist_ok=True)
-    failed = set((WORK / "failed").read_text().split()) if (WORK / "failed").exists() else set()
+    failed = (
+        set((WORK / "failed").read_text().split())
+        if (WORK / "failed").exists()
+        else set()
+    )
     # Recipes call these by name. They are defined in this file, so hand them over before packing.
     shared = {
-        "FAILED": failed, "pack": pack, "elf": elf, "tree": tree, "version": version,
-        "FILES": FILES, "WORK": WORK, "ROOT": ROOT, "PINS": PINS,
+        "FAILED": failed,
+        "pack": pack,
+        "elf": elf,
+        "tree": tree,
+        "version": version,
+        "WORK": WORK,
+        "ROOT": ROOT,
+        "PINS": PINS,
     }
     for _name, mod in load_recipes():
         for key, value in shared.items():
             setattr(mod, key, value)
         mod.pack_pkg()
-
-
-if __name__ == "__main__":
-    main()

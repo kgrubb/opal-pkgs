@@ -8,127 +8,42 @@ on:
     - cron: "23 9 * * 1"
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+# A pull request runs test and build. It does not commit versions or publish the feed.
+# A push to main does. The Monday run publishes only when a pin changed.
 jobs:
+  test:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/test.yml
+
   build:
-    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build.yml
+
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main' && needs.build.outputs.built == 'true'
     permissions:
       contents: write
-    outputs:
-      built: ${{ steps.plan.outputs.build }}
-    env:
-      UPDATE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
-      PUBLISH: ${{ github.ref == 'refs/heads/main' }}
-    steps:
-      - uses: actions/checkout@v7.0.1
-        with:
-          persist-credentials: ${{ env.UPDATE == 'true' || github.ref == 'refs/heads/main' }}
-      - name: Check upstream releases
-        id: upstream
-        if: env.UPDATE == 'true'
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq minisign
-          cp versions "$RUNNER_TEMP/versions.base"
-          set -o pipefail
-          python3 update.py | tee "$RUNNER_TEMP/changes" || echo > "$RUNNER_TEMP/update.failed"
-          if git diff --quiet -- versions; then
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-      # A push builds. The Monday run builds only when a pin changed.
-      - name: Decide whether to build
-        id: plan
-        run: |
-          if [ "$UPDATE" != true ] || [ "${{ steps.upstream.outputs.changed }}" = true ]; then
-            echo "build=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "build=false" >> "$GITHUB_OUTPUT"
-          fi
-      - uses: actions/checkout@v7.0.1
-        if: env.PUBLISH == 'true' && steps.plan.outputs.build == 'true'
-        with:
-          ref: feed
-          path: feed
-          persist-credentials: true
-      - run: python3 check.py
-      - run: ./build.sh
-        if: steps.plan.outputs.build == 'true'
-        env:
-          VERSIONS_BASE: ${{ runner.temp }}/versions.base
-      - name: Commit version bumps
-        if: github.ref == 'refs/heads/main' && steps.plan.outputs.build == 'true'
-        run: |
-          git diff --quiet versions && exit 0
-          # git diff exits 1 when versions changed. The body is that diff, after failed pins were put back.
-          msg=$(git diff -- versions || true)
-          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
-            commit -m "chore: update packages" -m "$msg" versions
-          git push
-      # The feed is append-only: a published filename is never replaced or removed.
-      - name: Publish new ipks
-        if: env.PUBLISH == 'true' && steps.plan.outputs.build == 'true'
-        run: |
-          for f in out/*.ipk; do [ -e "feed/${f##*/}" ] || cp "$f" feed/; done
-          python3 index.py feed
-          cd feed
-          git add -A
-          git diff --cached --quiet && exit 0
-          git -c user.name=github-actions[bot] -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
-            commit -m "chore: publish $(git diff --cached --name-only -- '*.ipk' | xargs)"
-          git push
-      - uses: actions/upload-pages-artifact@v5.0.0
-        if: env.PUBLISH == 'true' && steps.plan.outputs.build == 'true'
-        with:
-          path: feed
-      # After the upload, so a package that did build still reaches the feed.
-      - name: Fail if a package was skipped
-        if: env.UPDATE == 'true'
-        run: |
-          if [ -s work/failed ] || [ -f "$RUNNER_TEMP/update.failed" ]; then
-            echo "a package did not update or build" >&2
-            cat work/failed >&2 || true
-            exit 1
-          fi
-
-  # GitHub disables schedules in public repos after 60 days without activity. Re-enabling resets that.
-  keepalive:
-    if: github.event_name == 'schedule'
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-    steps:
-      - run: gh workflow enable feed.yml --repo "$GITHUB_REPOSITORY"
-        env:
-          GH_TOKEN: ${{ github.token }}
+    uses: ./.github/workflows/publish.yml
 
   deploy:
-    if: always() && github.ref == 'refs/heads/main' && needs.build.result != 'cancelled' && needs.build.outputs.built != 'false'
-    needs: build
-    runs-on: ubuntu-latest
+    needs: [build, publish]
+    if: always() && github.ref == 'refs/heads/main' && needs.build.result != 'cancelled' && needs.build.outputs.built == 'true' && needs.publish.result != 'cancelled' && needs.publish.result != 'skipped'
     permissions:
       pages: write
       id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.retry.outputs.page_url || steps.deploy.outputs.page_url }}
-    steps:
-      # Pages sometimes stays on updating_pages until this action gives up.
-      # A healthy deploy finishes in under a minute, so try once more.
-      - id: deploy
-        continue-on-error: true
-        uses: actions/deploy-pages@v5.0.1
-        with:
-          timeout: 180000
-      - id: retry
-        if: steps.deploy.outcome == 'failure'
-        uses: actions/deploy-pages@v5.0.1
-        with:
-          timeout: 180000
+    uses: ./.github/workflows/deploy.yml
+
+  # GitHub disables schedules in public repos after 60 days without activity.
+  keepalive:
+    if: github.event_name == 'schedule'
+    permissions:
+      actions: write
+    uses: ./.github/workflows/keepalive.yml
