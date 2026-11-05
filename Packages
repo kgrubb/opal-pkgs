@@ -24,6 +24,19 @@ Filename: ca-bundle_20261020-2_all.ipk
 Size: 231324
 SHA256sum: 22e9b1736e94506cb95f23f3c62c522805d684dd1ced88ff8980d61963e56c59
 
+Package: ca-bundle
+Version: 20261020-3
+Depends: libc
+Provides: ca-certs
+License: MPL-2.0
+Section: base
+Description: Mozilla CA bundle for the GL-SFT1200
+Architecture: all
+Installed-Size: 400232
+Filename: ca-bundle_20261020-3_all.ipk
+Size: 231706
+SHA256sum: 16801b940a967973b4012a6abc5281cc6a3aeba0c1c2c81beb4690a8815929ca
+
 Package: ca-certificates
 Version: 20261020-1
 Depends: libc
@@ -50,6 +63,19 @@ Filename: ca-certificates_20261020-2_all.ipk
 Size: 113333
 SHA256sum: df7ce88cb0aef2c713d90eb2bfd123463ab90fdb6c7e11a3a3c181015785c162
 
+Package: ca-certificates
+Version: 20261020-3
+Depends: libc
+Provides: ca-certs
+License: MPL-2.0
+Section: base
+Description: Mozilla CA certificates for the GL-SFT1200
+Architecture: all
+Installed-Size: 178255
+Filename: ca-certificates_20261020-3_all.ipk
+Size: 114151
+SHA256sum: 83849f0964225df6e0a5028e246cf5ed570d43e8d77f35a360f60c5bbaa74524
+
 Package: chrony
 Version: 4.9-1
 Depends: libc
@@ -63,6 +89,19 @@ Filename: chrony_4.9-1_mips_siflower.ipk
 Size: 299511
 SHA256sum: c338519b9171ff3683089e6b6d49dd0cc81e3f6143802f8488fd757bdd0453a8
 
+Package: chrony
+Version: 4.9-2
+Depends: libc
+Require-User: chrony=323:chrony=323
+License: GPL-2.0
+Section: net
+Description: Static chrony for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 706344
+Filename: chrony_4.9-2_mips_siflower.ipk
+Size: 300339
+SHA256sum: e5424d51b02f6abc1043760a8ff12c72616d117e886e4295c3ffd946c2bdbe58
+
 Package: curl
 Version: 8.23.0-1
 Depends: libc, ca-bundle
@@ -74,6 +113,18 @@ Installed-Size: 1782844
 Filename: curl_8.23.0-1_mips_siflower.ipk
 Size: 741427
 SHA256sum: 2843374ebe21d922dc319a489037c3165e34033c39334b50aa11ce2fb3b9f73d
+
+Package: curl
+Version: 8.23.0-2
+Depends: libc, ca-bundle
+License: MIT
+Section: net
+Description: Static curl with mbedTLS for the GL-SFT1200. The system libcurl stays for GL programs.
+Architecture: mips_siflower
+Installed-Size: 1782844
+Filename: curl_8.23.0-2_mips_siflower.ipk
+Size: 743625
+SHA256sum: 83f10fb78c747b8b65b7f67b17c64810ab91c030f5391982b73dcba1ec384345
 
 Package: dnscrypt-proxy2
 Version: 2.1.20-1
@@ -100,6 +151,19 @@ Installed-Size: 14631047
 Filename: dnscrypt-proxy2_2.1.20-2_mips_siflower.ipk
 Size: 4775398
 SHA256sum: df24aa9f333f8e9d1fe16495b5b24c790393874093d6675c22f92d48c8dea6b7
+
+Package: dnscrypt-proxy2
+Version: 2.1.20-3
+Depends: libc, ca-bundle
+Conflicts: dnscrypt-proxy
+License: ISC
+Section: net
+Description: dnscrypt-proxy for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 14631047
+Filename: dnscrypt-proxy2_2.1.20-3_mips_siflower.ipk
+Size: 4810190
+SHA256sum: 57b9a4d04b7d73970eabd69b77b65fa8fb9787755a2f01602a5f00a6cb81475f
 
 Package: dnsmasq-full
 Version: 2.93-1
@@ -128,6 +192,20 @@ Installed-Size: 1323360
 Filename: dnsmasq-full_2.93-2_mips_siflower.ipk
 Size: 620505
 SHA256sum: 955486ca86d0d590e25280064be5caedda65cfe995e89c8c6f7e4cb102784d83
+
+Package: dnsmasq-full
+Version: 2.93-3
+Depends: libc, kmod-ipt-ipset
+Provides: dnsmasq
+Require-User: dnsmasq=453:dnsmasq=453 dnsmasq_vpn=456:dnsmasq=453
+License: GPL-2.0
+Section: net
+Description: Static dnsmasq with DHCP, DNSSEC, ipset, conntrack and ubus for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 1323360
+Filename: dnsmasq-full_2.93-3_mips_siflower.ipk
+Size: 621617
+SHA256sum: de27c23d2a60bf1dba3d82414fde9c148fc726b80dbfe2add0fd0fb54e64955f
 
 Package: dropbear
 Version: 2026.94-1
@@ -171,6 +249,19 @@ Filename: dropbear_2026.94-3_mips_siflower.ipk
 Size: 245043
 SHA256sum: 58b55820d433c858c34017eff7be92006889f8b5ea43d11c14024ced130ccae5
 
+Package: dropbear
+Version: 2026.94-4
+Depends: libc
+Alternatives: 100:/usr/bin/ssh:/usr/sbin/dropbear, 100:/usr/bin/scp:/usr/sbin/dropbear
+License: MIT
+Section: net
+Description: Static Dropbear SSH server and client for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 559699
+Filename: dropbear_2026.94-4_mips_siflower.ipk
+Size: 246249
+SHA256sum: b64ca22aff9af7194cee7c6926429fa38b9c2add5d26891e96f1b4af53d9a4fb
+
 Package: ethtool
 Version: 7.2-1
 Depends: libc
@@ -195,6 +286,18 @@ Filename: ethtool_7.2-2_mips_siflower.ipk
 Size: 224266
 SHA256sum: 7e626e8c48e1a54e3a678350038a52246ccc8e31c79865804f5379b25bdd911d
 
+Package: ethtool
+Version: 7.2-3
+Depends: libc
+License: GPL-2.0
+Section: net
+Description: Static ethtool (ioctl interface) for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 732476
+Filename: ethtool_7.2-3_mips_siflower.ipk
+Size: 225768
+SHA256sum: c762318621dbcded1187b8e64adf85281647547a911be7c4314e1e6aafd8880d
+
 Package: i2c-tools
 Version: 4.4-1
 Depends: libc
@@ -218,6 +321,30 @@ Installed-Size: 1704860
 Filename: i2c-tools_4.4-2_mips_siflower.ipk
 Size: 738323
 SHA256sum: bb0ee3435fb4df844462a8cde8ad5f08ad3a4ffebe6e3d6cf117824c9183e48e
+
+Package: i2c-tools
+Version: 4.4-3
+Depends: libc
+License: GPL-2.0
+Section: utils
+Description: Static i2c-tools for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 1704860
+Filename: i2c-tools_4.4-3_mips_siflower.ipk
+Size: 739345
+SHA256sum: fb111931b44857a99d374380b09256d29156ca545e1b2d81b19b912e05b9e12e
+
+Package: libopenssl
+Version: 1.1.1w-2
+Depends: libc
+License: OpenSSL
+Section: libs
+Description: Shared OpenSSL 1.1.1w for the GL-SFT1200 (ABI drop-in for 1.1.1i). Freexian ELTS backports: CVE-2024-2511, CVE-2024-4741, CVE-2024-5535, CVE-2026-45447.
+Architecture: mips_siflower
+Installed-Size: 3338044
+Filename: libopenssl_1.1.1w-2_mips_siflower.ipk
+Size: 1177154
+SHA256sum: b15013c7862a13041d96992c54c1fd14fe00503dd8bbddae800f59c6a6cfda62
 
 Package: snmpd
 Version: 5.9.5.2-1
@@ -255,6 +382,18 @@ Filename: snmpd_5.9.5.2-3_mips_siflower.ipk
 Size: 424970
 SHA256sum: 383fdb2e76d6a5103fcf632150d6f46d67fa6345988e02b60495c3c65258d0b8
 
+Package: snmpd
+Version: 5.9.5.2-4
+Depends: libc
+License: BSD-3-Clause
+Section: net
+Description: Static net-snmp agent for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 1137344
+Filename: snmpd_5.9.5.2-4_mips_siflower.ipk
+Size: 426140
+SHA256sum: d766ada9dcb4efb1cb0d9aabad600b0dea3ac7c47dffaceeb84d991ba67cb4c3
+
 Package: softflowd
 Version: 1.1.1-1
 Depends: libc
@@ -266,6 +405,18 @@ Installed-Size: 543481
 Filename: softflowd_1.1.1-1_mips_siflower.ipk
 Size: 221252
 SHA256sum: d5a4a7cfd8c2c552119044683abc8d55ef4c057bd512f17c79b1790ab2b4cb42
+
+Package: softflowd
+Version: 1.1.1-2
+Depends: libc
+License: BSD-2-Clause
+Section: net
+Description: Static softflowd for the GL-SFT1200. libpcap is linked in, so the system libpcap stays.
+Architecture: mips_siflower
+Installed-Size: 543481
+Filename: softflowd_1.1.1-2_mips_siflower.ipk
+Size: 221969
+SHA256sum: 521a1f83de718ad5611971501111f5a083d971c5680e3bfc7c9d3110635b4e91
 
 Package: sudo
 Version: 1.9.17p2-1
@@ -291,6 +442,18 @@ Filename: sudo_1.9.17p2-2_mips_siflower.ipk
 Size: 844706
 SHA256sum: 1c0439a7cac6efb8b1597d31937a5436a780671e4f68ce767d4755087a8cf29f
 
+Package: sudo
+Version: 1.9.17p2-3
+Depends: libc
+License: ISC
+Section: admin
+Description: Static sudo with built-in sudoers for the GL-SFT1200
+Architecture: mips_siflower
+Installed-Size: 2189069
+Filename: sudo_1.9.17p2-3_mips_siflower.ipk
+Size: 846808
+SHA256sum: 3dfd3ac149633b1616e3407ee90e435264a04a27a1ee04843540fed6e66e5436
+
 Package: wireguard-tools
 Version: 1.0.20260223-1
 Depends: libc, kmod-wireguard
@@ -302,3 +465,15 @@ Installed-Size: 416460
 Filename: wireguard-tools_1.0.20260223-1_mips_siflower.ipk
 Size: 181656
 SHA256sum: adfb53bb5d360e78777d778cc894e0bac091b5c26291c7a3787b913f8fbabcff
+
+Package: wireguard-tools
+Version: 1.0.20260223-2
+Depends: libc, kmod-wireguard
+License: GPL-2.0
+Section: net
+Description: Static wg for the GL-SFT1200. The kernel module stays the stock one.
+Architecture: mips_siflower
+Installed-Size: 416460
+Filename: wireguard-tools_1.0.20260223-2_mips_siflower.ipk
+Size: 181903
+SHA256sum: 723c36acf2b5fea087f445488811419e7a08e1161b4d790e4a594fe4202cd240
