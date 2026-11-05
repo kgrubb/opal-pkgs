@@ -20,9 +20,11 @@ dnscrypt-proxy	2.1.20	3	256776061040d726f13ab8c3d50d2849c92c91d9dae3342fef2e97f4
 wireguard-tools	1.0.20260223	2	859f8af03702db5e5c43f8ece77f5ebef40a2f4627c3e03997a031d4940ea9bc	https://github.com/WireGuard/wireguard-tools/archive/refs/tags/v{v}.tar.gz
 softflowd	1.1.1	2	a6882e59931e5880901f8ee28d78b082cb3000ad8d28af35c13f2b528edbb2c9	https://github.com/irino/softflowd/archive/refs/tags/softflowd-v{v}.tar.gz
 curl	8.23.0	2	8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5	https://curl.se/download/curl-{v}.tar.xz
+libcurl	8.23.0	1	8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5	https://curl.se/download/curl-{v}.tar.xz
 dnsmasq	2.93	3	0c00d4e5c97c8306e5fb932b348b34269c9c29a0e7df0e8e82958b407092bc19	https://thekelleys.org.uk/dnsmasq/dnsmasq-{v}.tar.xz
 chrony	4.9	2	4924c6f530105bcd5b9e9e33c48a2ae1bfd889222c8480bc41601110efc864d0	https://chrony-project.org/releases/chrony-{v}.tar.gz
 net-snmp	5.9.5.2	4	16707719f833184a4b72835dac359ae188123b06b5e42817c00790d7dc1384bf	https://downloads.sourceforge.net/project/net-snmp/net-snmp/{v}/net-snmp-{v}.tar.gz
 ca-bundle	2026-10-20	3	796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe	https://curl.se/ca/cacert-{v}.pem
 ca-certificates	2026-10-20	3	796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe	https://curl.se/ca/cacert-{v}.pem
-libopenssl	1.1.1w	2	cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8	https://www.openssl.org/source/old/1.1.1/openssl-{v}.tar.gz
+libopenssl	1.1.1w	3	cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8	https://www.openssl.org/source/old/1.1.1/openssl-{v}.tar.gz
+zlib	1.3.1	1	9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23	https://github.com/madler/zlib/releases/download/v{v}/zlib-{v}.tar.gz
