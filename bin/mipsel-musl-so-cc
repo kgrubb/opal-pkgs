@@ -25,6 +25,17 @@ if [ "$shared" = 1 ]; then
     -nostdlib -s -Wl,-z,now -Wl,-z,relro -Wl,--hash-style=sysv \
     "$@" -Wl,--no-as-needed "$SYSROOT_SO/lib/libc.so"
 fi
+# configure and zlib probe with a .c on the link line. ld.lld cannot compile it.
+for a; do
+  case $a in
+    *.c|*.cc|*.cpp|*.S|*.s)
+      exec mipsel-cc -nostdinc -isystem "$SYSROOT/include" \
+        -idirafter "$uapi_any" -idirafter "$uapi_mips" \
+        -nostdlib -s -Wl,-z,now -Wl,-z,relro -Wl,--hash-style=sysv \
+        "$@" -Wl,--no-as-needed "$SYSROOT_SO/lib/libc.so"
+      ;;
+  esac
+done
 # Drop compile-only flags openssl (and similar) pass on the link line.
 out=
 set -- "$@" --
