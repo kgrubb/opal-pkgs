@@ -20,8 +20,14 @@ if [ ! -f "$so" ]; then
   rm -rf "$build"
   mkdir -p "$build"
   cd "$build"
+  # curl 8.17+ rejects CURLOPT_KRBLEVEL; stock OpenWrt curl 7.63 always setopts it.
+  for p in "$ROOT"/pkg/libcurl/patches/*.patch; do
+    patch -d "$src" -p1 < "$p" || exit 1
+  done
   # zig reports host /usr/bin/ld so libtool disables shared; build a PIC .a then link .so ourselves.
   # musl 1.1.20 has no memset_explicit; zig's clang probe falsely detects it.
+  # Keep RTSP + telnet: stock curl 7.63 always setopts CURLOPT_INTERLEAVEDATA and
+  # CURLOPT_TELNETOPTIONS; disabling those protocols makes those setopts CURLE_UNKNOWN_OPTION.
   CC=mipsel-musl-so-cc \
     CFLAGS="-Os -fPIC" \
     CPPFLAGS="-I$mbed/include" \
@@ -32,7 +38,7 @@ if [ ! -f "$so" ]; then
     --with-mbedtls="$mbed" --without-zlib --without-brotli --without-zstd --without-libpsl \
     --without-nghttp2 --without-libidn2 --disable-ldap --disable-manual --disable-docs \
     --disable-dict --disable-gopher --disable-imap --disable-ipfs --disable-mqtt --disable-pop3 \
-    --disable-rtsp --disable-smtp --disable-telnet --disable-tftp --disable-websockets \
+    --disable-smtp --disable-tftp --disable-websockets \
     --enable-ipv6 --with-ca-bundle=/etc/ssl/certs/ca-certificates.crt --with-ca-path=/etc/ssl/certs || exit 1
   make -j"$JOBS" -C lib || exit 1
   mkdir -p "$build/lib/.libs"
