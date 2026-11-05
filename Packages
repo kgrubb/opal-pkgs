@@ -569,6 +569,18 @@ Filename: openssl-util_1.1.1w-1_mips_siflower.ipk
 Size: 241288
 SHA256sum: 50c7d46cce0dd68457905a880960c71813bbceaebe04e2728b7020f88f252ffa
 
+Package: openssl-util
+Version: 1.1.1w-2
+Depends: libc, libopenssl, libopenssl-conf
+License: OpenSSL
+Section: utils
+Description: Open source SSL toolkit (utility)
+Architecture: mips_siflower
+Installed-Size: 649680
+Filename: openssl-util_1.1.1w-2_mips_siflower.ipk
+Size: 241060
+SHA256sum: fbe8f1d955766a1918d490c76b258d47eaea35dd4d62ec1609cb491b44f14e18
+
 Package: snmpd
 Version: 5.9.5.2-1
 Depends: libc
