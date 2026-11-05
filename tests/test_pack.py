@@ -286,3 +286,13 @@ def test_exe_rejects_a_bad_binary(tmp_path, monkeypatch, overrides, match):
     monkeypatch.setattr(pack, "_dyn", lambda path, shared=True: _fake_dyn(**overrides))
     with pytest.raises(SystemExit, match=match):
         pack.exe(tmp_path / "x", {"libc.so", "libgcc_s.so.1"})
+
+
+def test_exe_requires_libgcc_when_the_caller_says_so(tmp_path, monkeypatch):
+    monkeypatch.setattr(pack, "_dyn", lambda path, shared=True: _fake_dyn())
+    with pytest.raises(SystemExit, match="libgcc_s.so.1"):
+        pack.exe(
+            tmp_path / "x",
+            {"libc.so", "libgcc_s.so.1"},
+            needed_required=("libgcc_s.so.1",),
+        )

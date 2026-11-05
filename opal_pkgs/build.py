@@ -288,6 +288,37 @@ def ensure_libc_stub(root, env, run=subprocess.run):
     print("built libc.so stub")
 
 
+def ensure_libgcc_stub(root, env, run=subprocess.run):
+    """SONAME libgcc_s.so.1 so dyn executables load the router's soft-div helpers."""
+    stub = Path(env["SYSROOT_SO"]) / "lib" / "libgcc_s.so.1"
+    if stub.is_file():
+        return
+    stub.parent.mkdir(parents=True, exist_ok=True)
+    source = stub.parent / "libgcc_stub.c"
+    source.write_text("void __opal_libgcc_stub(void) {}\n")
+    child = dict(env)
+    child["CC"] = "mipsel-cc"
+    result = run(
+        [
+            "mipsel-cc",
+            "-shared",
+            "-nostdlib",
+            "-Wl,-soname,libgcc_s.so.1",
+            "-o",
+            str(stub),
+            str(source),
+        ],
+        cwd=stub.parent,
+        env=child,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        show(result)
+        raise SystemExit("libgcc_s.so.1 stub failed")
+    print("built libgcc_s.so.1 stub")
+
+
 def check_time_t(cc, work, env, run=subprocess.run):
     source = work / "time_t.c"
     source.write_text(TIME_T_C)
@@ -365,6 +396,7 @@ def toolchain(root, uname, jobs, run, fetch):
     ensure_musl(root, jobs, env, run=run, fetch=fetch)
     check_time_t(env["CC"], root / "work", env, run=run)
     ensure_libc_stub(root, env, run=run)
+    ensure_libgcc_stub(root, env, run=run)
     return env
 
 
