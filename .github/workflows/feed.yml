@@ -20,6 +20,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    outputs:
+      built: ${{ steps.plan.outputs.build }}
     env:
       UPDATE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
       PUBLISH: ${{ github.ref == 'refs/heads/main' }}
@@ -28,6 +30,7 @@ jobs:
         with:
           persist-credentials: ${{ env.UPDATE == 'true' || github.ref == 'refs/heads/main' }}
       - name: Check upstream releases
+        id: upstream
         if: env.UPDATE == 'true'
         run: |
           sudo apt-get update -qq
@@ -35,18 +38,33 @@ jobs:
           cp versions "$RUNNER_TEMP/versions.base"
           set -o pipefail
           python3 update.py | tee "$RUNNER_TEMP/changes" || echo > "$RUNNER_TEMP/update.failed"
+          if git diff --quiet -- versions; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      # A push builds. The Monday run builds only when a pin changed.
+      - name: Decide whether to build
+        id: plan
+        run: |
+          if [ "$UPDATE" != true ] || [ "${{ steps.upstream.outputs.changed }}" = true ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "build=false" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v7.0.1
-        if: env.PUBLISH == 'true'
+        if: env.PUBLISH == 'true' && steps.plan.outputs.build == 'true'
         with:
           ref: feed
           path: feed
           persist-credentials: true
       - run: python3 check.py
       - run: ./build.sh
+        if: steps.plan.outputs.build == 'true'
         env:
           VERSIONS_BASE: ${{ runner.temp }}/versions.base
       - name: Commit version bumps
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.plan.outputs.build == 'true'
         run: |
           git diff --quiet versions && exit 0
           # git diff exits 1 when versions changed. The body is that diff, after failed pins were put back.
@@ -56,7 +74,7 @@ jobs:
           git push
       # The feed is append-only: a published filename is never replaced or removed.
       - name: Publish new ipks
-        if: env.PUBLISH == 'true'
+        if: env.PUBLISH == 'true' && steps.plan.outputs.build == 'true'
         run: |
           for f in out/*.ipk; do [ -e "feed/${f##*/}" ] || cp "$f" feed/; done
           python3 index.py feed
@@ -67,7 +85,7 @@ jobs:
             commit -m "chore: publish $(git diff --cached --name-only -- '*.ipk' | xargs)"
           git push
       - uses: actions/upload-pages-artifact@v5.0.0
-        if: env.PUBLISH == 'true'
+        if: env.PUBLISH == 'true' && steps.plan.outputs.build == 'true'
         with:
           path: feed
       # After the upload, so a package that did build still reaches the feed.
@@ -92,7 +110,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
   deploy:
-    if: always() && github.ref == 'refs/heads/main' && needs.build.result != 'cancelled'
+    if: always() && github.ref == 'refs/heads/main' && needs.build.result != 'cancelled' && needs.build.outputs.built != 'false'
     needs: build
     runs-on: ubuntu-latest
     permissions:
