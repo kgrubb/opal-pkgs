@@ -7,7 +7,7 @@ shared=0
 for a; do
   shift
   case $a in
-    -c|-E|-S|-M|-MM) link=0 ;;
+    -c|-E|-S|-M|-MM|-v|--version|-dumpmachine) link=0 ;;
     -shared) shared=1 ;;
     -lc|-lm|-lpthread|-ldl|-lrt|-lgcc|-lgcc_eh|-pthread) continue ;;
   esac
