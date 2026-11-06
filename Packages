@@ -497,6 +497,18 @@ Filename: libcurl_8.23.0-4_mips_siflower.ipk
 Size: 715126
 SHA256sum: 20b040f77d11225c30a6c69678b861b28b427cd49a6d0f0aeb7d97a7e0032a1d
 
+Package: libopenssl-conf
+Version: 1.1.1w-1
+Depends: libc, libopenssl
+License: OpenSSL
+Section: libs
+Description: /etc/ssl/openssl.cnf config file
+Architecture: mips_siflower
+Installed-Size: 13952
+Filename: libopenssl-conf_1.1.1w-1_mips_siflower.ipk
+Size: 5383
+SHA256sum: 7c3d63d7ec6494359d54ca4982c6e5eefd2d5a073b1988d19f6899255a5d0e9f
+
 Package: libopenssl
 Version: 1.1.1w-2
 Depends: libc
