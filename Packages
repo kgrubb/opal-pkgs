@@ -690,6 +690,18 @@ Filename: snmpd_5.9.5.2-5_mips_siflower.ipk
 Size: 426112
 SHA256sum: d38689c8d7c4f1b0c9ce7d10f1631685c222132b3d5f4f70c4e3c4427052b30e
 
+Package: snmpd
+Version: 5.9.5.2-6
+Depends: libc
+License: BSD-3-Clause
+Section: net
+Description: SNMP agent
+Architecture: mips_siflower
+Installed-Size: 1137785
+Filename: snmpd_5.9.5.2-6_mips_siflower.ipk
+Size: 426349
+SHA256sum: 83125f9a043be2567fb0faa64911c1bed4d4b02369a42a7d558b075fe41408fc
+
 Package: softflowd
 Version: 1.1.1-1
 Depends: libc
