@@ -84,6 +84,17 @@ def page_sha3(page, filename):
     return match.group(1).lower() if match else None
 
 
+def with_page_commit(name, url, page):
+    """An OpenWrt snapshot URL ends in the commit. Take PKG_SOURCE_VERSION from the makefile."""
+    pinned = re.search(r"/([0-9a-f]{40})\.tar\.gz", url)
+    if not pinned:
+        return url
+    found = re.findall(r"(?m)^PKG_SOURCE_VERSION:=([0-9a-f]{40})\s*$", page)
+    if len(found) != 1:
+        raise SystemExit(f"{name}: PKG_SOURCE_VERSION missing on the announcement page")
+    return url.replace(pinned.group(1), found[0], 1)
+
+
 def signer(name, suffix):
     ext = "pub" if suffix == ".minisig" else "gpg"
     return ROOT / "pkg" / name / f"key.{ext}"
@@ -121,7 +132,7 @@ def apply(lines, fetch, latest=None):
     errors, notes = [], []
     out = list(lines)
     for i, line in enumerate(lines):
-        name, current, _, pinned, url = (
+        name, current, release, pinned, url = (
             line.split("\t") if line and not line.startswith("#") else [""] * 5
         )
         if name not in latest:
@@ -134,6 +145,8 @@ def apply(lines, fetch, latest=None):
                 raise SystemExit(f"{name}: no versions matched on {page}")
             newest = max(found + [current], key=key)
             url = with_page_year(url, newest, page_text)
+            pinned_url = url
+            url = with_page_commit(name, url, page_text)
             data = fetch(url.replace("{v}", newest))
             if "sqlite.org" in page:
                 filename = url.replace("{v}", newest).rsplit("/", 1)[-1]
@@ -154,10 +167,15 @@ def apply(lines, fetch, latest=None):
                 )
             sha = hashlib.sha256(data).hexdigest()
             if newest == current:
-                if sha != pinned:
+                if sha == pinned:
+                    continue
+                # Same opkg version, new snapshot. A replaced file at the old URL is not that.
+                if url == pinned_url:
                     raise SystemExit(
                         f"{name}: upstream {current} no longer matches its pinned SHA-256"
                     )
+                out[i] = f"{name}\t{current}\t{release}\t{sha}\t{url}"
+                notes.append(f"- {name} {current} new commit")
                 continue
             out[i] = f"{name}\t{newest}\t1\t{sha}\t{url}"
             notes.append(f"- {name} {current} -> {newest}")
