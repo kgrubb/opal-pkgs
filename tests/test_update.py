@@ -1,3 +1,4 @@
+import hashlib
 import io
 import lzma
 import subprocess
@@ -52,6 +53,63 @@ def test_apply_picks_the_highest_numeric_version():
     assert out[0].split("\t")[1] == "1.10"
     assert notes == ["- dropbear 1.9 -> 1.10"]
     assert errors == []
+
+
+def test_apply_takes_the_release_year_from_the_announcement_page():
+    lines = [
+        "libsqlite3\t3540100\t1\told\thttps://www.sqlite.org/2026/sqlite-autoconf-{v}.tar.gz"
+    ]
+    body = b"new-tarball"
+    digest = hashlib.sha3_256(body).hexdigest()
+    page = (
+        "sqlite-autoconf-3550000.tar.gz SHA3-256: "
+        + digest
+        + " d391('a3','2027/sqlite-autoconf-3550000.tar.gz');"
+    )
+
+    def fetch(url):
+        if url.endswith("download.html"):
+            return page.encode()
+        assert url == "https://www.sqlite.org/2027/sqlite-autoconf-3550000.tar.gz"
+        return body
+
+    latest = {
+        "libsqlite3": (
+            "https://www.sqlite.org/download.html",
+            r"sqlite-autoconf-(\d+)\.tar\.gz",
+            None,
+        )
+    }
+    out, notes, errors = update.apply(lines, fetch, latest)
+    cols = out[0].split("\t")
+    assert cols[1] == "3550000"
+    assert cols[4] == "https://www.sqlite.org/2027/sqlite-autoconf-{v}.tar.gz"
+    assert notes == ["- libsqlite3 3540100 -> 3550000"]
+    assert errors == []
+
+
+def test_apply_rejects_a_sqlite_tarball_that_misses_the_page_sha3():
+    lines = [
+        "libsqlite3\t3540100\t1\told\thttps://www.sqlite.org/2026/sqlite-autoconf-{v}.tar.gz"
+    ]
+    page = "sqlite-autoconf-3540100.tar.gz SHA3-256: " + "ab" * 32
+
+    def fetch(url):
+        if url.endswith("download.html"):
+            return page.encode()
+        return b"not-the-file"
+
+    latest = {
+        "libsqlite3": (
+            "https://www.sqlite.org/download.html",
+            r"sqlite-autoconf-(\d+)\.tar\.gz",
+            None,
+        )
+    }
+    out, notes, errors = update.apply(lines, fetch, latest)
+    assert out == lines
+    assert notes == []
+    assert "SHA3-256" in errors[0]
 
 
 def test_apply_keeps_a_comment_and_reports_a_missing_version():

@@ -63,6 +63,27 @@ def key(v):
     return tuple(int(n) for n in re.findall(r"\d+", v))
 
 
+def with_page_year(url, version, page):
+    """A /YYYY/ in the pin is the release year. Take the one named next to this version."""
+    pinned = re.search(r"/(\d{4})/", url)
+    if not pinned:
+        return url
+    years = re.findall(rf"(\d{{4}})/[^\s'\"<>]*{re.escape(version)}", page)
+    if not years:
+        return url
+    return url.replace(f"/{pinned.group(1)}/", f"/{max(years, key=int)}/", 1)
+
+
+def page_sha3(page, filename):
+    """sqlite.org prints SHA3-256 in the paragraph after the tarball name."""
+    match = re.search(
+        rf"{re.escape(filename)}.{{0,800}}?SHA3-256:\s*([0-9a-fA-F]{{64}})",
+        page,
+        re.DOTALL,
+    )
+    return match.group(1).lower() if match else None
+
+
 def signer(name, suffix):
     ext = "pub" if suffix == ".minisig" else "gpg"
     return ROOT / "pkg" / name / f"key.{ext}"
@@ -107,11 +128,22 @@ def apply(lines, fetch, latest=None):
             continue
         try:
             page, pattern, suffix = latest[name]
-            found = re.findall(pattern, fetch(page).decode())
+            page_text = fetch(page).decode()
+            found = re.findall(pattern, page_text)
             if not found:
                 raise SystemExit(f"{name}: no versions matched on {page}")
             newest = max(found + [current], key=key)
+            url = with_page_year(url, newest, page_text)
             data = fetch(url.replace("{v}", newest))
+            if "sqlite.org" in page:
+                filename = url.replace("{v}", newest).rsplit("/", 1)[-1]
+                digest = page_sha3(page_text, filename)
+                if digest is None:
+                    raise SystemExit(
+                        f"{name}: no SHA3-256 next to {filename} on {page}"
+                    )
+                if hashlib.sha3_256(data).hexdigest() != digest:
+                    raise SystemExit(f"{name}: SHA3-256 does not match {page}")
             if suffix:
                 verify(
                     name,
