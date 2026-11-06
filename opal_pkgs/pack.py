@@ -210,6 +210,11 @@ def exe(path, needed_allow, needed_required=()):
         raise SystemExit(f"{path}: executable PT_GNU_STACK")
     if info["fp_abi"] is not None and info["fp_abi"] != 1:
         raise SystemExit(f"{path}: fp_abi={info['fp_abi']} (want 1)")
+    # 0x70000013 is the GOT index musl walks. 0x70000011 is lld's symbol count.
+    # A lower index means global GOT entries, which lld does not put in dynsym order.
+    gotsym = info["tags"].get(0x70000013)
+    if gotsym is not None and gotsym < info["tags"].get(0x70000011, gotsym + 1):
+        raise SystemExit(f"{path}: MIPS global GOT")
     if b"clock_gettime64" in info["data"]:
         raise SystemExit(f"{path}: needs time64 syscalls")
     return info["data"]
