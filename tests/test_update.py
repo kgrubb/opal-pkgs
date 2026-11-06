@@ -130,6 +130,38 @@ def test_ca_releases_stay_separate():
     assert notes == [] and errors == []
 
 
+def test_libopenssl_bump_moves_the_config_package():
+    sha = "ab"
+    url = "https://example.test/openssl-{v}.tar.gz"
+    lines = [
+        f"libopenssl\t1.1.1i\t5\t{sha}\t{url}",
+        f"openssl-util\t1.1.1i\t3\t{sha}\t{url}",
+        f"libopenssl-conf\t1.1.1i\t1\t{sha}\t{url}",
+    ]
+
+    def fetch(page):
+        if page.endswith("1.1.1w.tar.gz"):
+            return b"openssl"
+        return b"openssl-1.1.1w.tar.gz"
+
+    out, _notes, errors = update.apply(
+        lines,
+        fetch,
+        {
+            "libopenssl": (
+                "https://example.test/openssl/",
+                r"openssl-(1\.1\.1w)\.tar\.gz",
+                None,
+            )
+        },
+    )
+    rows = {line.split("\t")[0]: line.split("\t") for line in out}
+    assert errors == []
+    assert rows["libopenssl"][1:3] == ["1.1.1w", "1"]
+    assert rows["openssl-util"][1:3] == ["1.1.1w", "1"]
+    assert rows["libopenssl-conf"][1:3] == ["1.1.1w", "1"]
+
+
 def test_packages_are_discovered():
     found = update.load_latest()
     dirs = sorted(

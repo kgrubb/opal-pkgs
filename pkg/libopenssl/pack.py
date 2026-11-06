@@ -24,6 +24,7 @@ FREEXIAN = (
 )
 
 ABI = Path(__file__).resolve().parent / "abi"
+FILES = Path(__file__).resolve().parent / "files"
 LIBSSL_VERDEFS = [
     "libssl.so.1.1",
     "OPENSSL_1_1_0",
@@ -105,6 +106,22 @@ def pack_pkg():
             ("usr/lib/libssl.so.1.1", ssl, 0o644),
         ],
     )
+    if "libopenssl-conf" not in FAILED:
+        # The build's openssl.cnf has no OpenWrt engine section. Ship the file
+        # the router already uses, which is 1.1.1w plus that section.
+        pack(
+            "libopenssl-conf",
+            "libopenssl-conf",
+            "mips_siflower",
+            """
+    Depends: libc, libopenssl
+    License: OpenSSL
+    Section: libs
+    Description: /etc/ssl/openssl.cnf config file
+    """,
+            [("etc/ssl/openssl.cnf", (FILES / "openssl.cnf").read_bytes(), 0o644)],
+            ["/etc/ssl/openssl.cnf"],
+        )
     if "openssl-util" in FAILED:
         return
     openssl = exe(
