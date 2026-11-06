@@ -617,6 +617,19 @@ Filename: openssl-util_1.1.1w-3_mips_siflower.ipk
 Size: 238393
 SHA256sum: a32031f12bc63e5c0de2ee783818c150e15ef16ddaa8752ad1944eec1cfd34f5
 
+Package: openvpn-openssl
+Version: 2.7.9-1
+Depends: libc, kmod-tun, libopenssl
+Provides: openvpn, openvpn-crypto
+License: GPL-2.0
+Section: net
+Description: Open source VPN solution using OpenSSL
+Architecture: mips_siflower
+Installed-Size: 973261
+Filename: openvpn-openssl_2.7.9-1_mips_siflower.ipk
+Size: 372746
+SHA256sum: c51fb416c5f21d73db69ea6528979d2d9d490f7079ff41fd2e29bb2f3c6e8926
+
 Package: snmpd
 Version: 5.9.5.2-1
 Depends: libc
