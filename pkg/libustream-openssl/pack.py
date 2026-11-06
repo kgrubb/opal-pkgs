@@ -2,10 +2,11 @@ from pathlib import Path
 
 from opal_pkgs.pack import FAILED, load_names, pack, so, tree
 
-# OpenWrt 22.03 ustream-ssl pin. Archive has no maintainer signature.
+# OpenWrt 22.03 names the snapshot. The date is the opkg version.
+# The archive commit is PKG_SOURCE_VERSION. No maintainer signature.
 LATEST = (
     "https://raw.githubusercontent.com/openwrt/openwrt/openwrt-22.03/package/libs/ustream-ssl/Makefile",
-    r"PKG_SOURCE_DATE:=(2022-12-08)",
+    r"PKG_SOURCE_DATE:=(\d{4}-\d{2}-\d{2})",
     None,
 )
 

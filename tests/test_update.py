@@ -88,6 +88,37 @@ def test_apply_takes_the_release_year_from_the_announcement_page():
     assert errors == []
 
 
+def test_apply_rejects_a_sqlite_year_move_that_changes_the_same_version():
+    lines = [
+        "libsqlite3\t3540100\t1\told\thttps://www.sqlite.org/2026/sqlite-autoconf-{v}.tar.gz"
+    ]
+    body = b"moved-year"
+    digest = hashlib.sha3_256(body).hexdigest()
+    page = (
+        "sqlite-autoconf-3540100.tar.gz SHA3-256: "
+        + digest
+        + " d391('a3','2027/sqlite-autoconf-3540100.tar.gz');"
+    )
+
+    def fetch(url):
+        if url.endswith("download.html"):
+            return page.encode()
+        assert url == "https://www.sqlite.org/2027/sqlite-autoconf-3540100.tar.gz"
+        return body
+
+    latest = {
+        "libsqlite3": (
+            "https://www.sqlite.org/download.html",
+            r"sqlite-autoconf-(\d+)\.tar\.gz",
+            None,
+        )
+    }
+    out, notes, errors = update.apply(lines, fetch, latest)
+    assert out == lines
+    assert notes == []
+    assert "no longer matches" in errors[0]
+
+
 def test_apply_rejects_a_sqlite_tarball_that_misses_the_page_sha3():
     lines = [
         "libsqlite3\t3540100\t1\told\thttps://www.sqlite.org/2026/sqlite-autoconf-{v}.tar.gz"
@@ -121,6 +152,94 @@ def test_apply_keeps_a_comment_and_reports_a_missing_version():
     assert out == lines
     assert notes == []
     assert "no versions matched" in errors[0]
+
+
+OLD = "9217ab46536353c7c792951b57163063f5ec7a3b"
+NEW = "0123456789abcdef0123456789abcdef01234567"
+USTREAM = (
+    "https://example.test/Makefile",
+    r"PKG_SOURCE_DATE:=(\d{4}-\d{2}-\d{2})",
+    None,
+)
+
+
+def _ustream_line(commit, sha):
+    return (
+        "libustream-openssl\t2022-12-08\t3\t"
+        + sha
+        + f"\thttps://github.com/openwrt/ustream-ssl/archive/{commit}.tar.gz"
+    )
+
+
+def _makefile(date, commit):
+    return f"PKG_SOURCE_DATE:={date}\nPKG_SOURCE_VERSION:={commit}\n"
+
+
+def test_apply_leaves_an_unchanged_ustream_snapshot():
+    body = b"same-snapshot"
+    sha = hashlib.sha256(body).hexdigest()
+    lines = [_ustream_line(OLD, sha)]
+
+    def fetch(url):
+        if url.endswith("Makefile"):
+            return _makefile("2022-12-08", OLD).encode()
+        assert url.endswith(f"{OLD}.tar.gz")
+        return body
+
+    out, notes, errors = update.apply(lines, fetch, {"libustream-openssl": USTREAM})
+    assert out == lines
+    assert notes == []
+    assert errors == []
+
+
+def test_apply_tracks_a_new_ustream_commit_without_a_new_date():
+    body = b"new-snapshot"
+    lines = [_ustream_line(OLD, "old-sha")]
+
+    def fetch(url):
+        if url.endswith("Makefile"):
+            return _makefile("2022-12-08", NEW).encode()
+        assert url.endswith(f"{NEW}.tar.gz")
+        return body
+
+    out, notes, errors = update.apply(lines, fetch, {"libustream-openssl": USTREAM})
+    cols = out[0].split("\t")
+    assert cols[1] == "2022-12-08"
+    assert cols[2] == "3"
+    assert cols[3] == hashlib.sha256(body).hexdigest()
+    assert cols[4].endswith(f"{NEW}.tar.gz")
+    assert notes == ["- libustream-openssl 2022-12-08 new commit"]
+    assert errors == []
+
+
+def test_apply_tracks_a_new_ustream_date_and_commit():
+    body = b"dated-snapshot"
+    lines = [_ustream_line(OLD, "old-sha")]
+
+    def fetch(url):
+        if url.endswith("Makefile"):
+            return _makefile("2024-03-01", NEW).encode()
+        assert url.endswith(f"{NEW}.tar.gz")
+        return body
+
+    out, notes, errors = update.apply(lines, fetch, {"libustream-openssl": USTREAM})
+    cols = out[0].split("\t")
+    assert cols[1] == "2024-03-01"
+    assert cols[2] == "1"
+    assert cols[4].endswith(f"{NEW}.tar.gz")
+    assert notes == ["- libustream-openssl 2022-12-08 -> 2024-03-01"]
+    assert errors == []
+
+
+def test_apply_rejects_a_makefile_without_a_commit():
+    lines = [_ustream_line(OLD, "old-sha")]
+    latest = {"libustream-openssl": USTREAM}
+    out, notes, errors = update.apply(
+        lines, lambda url: b"PKG_SOURCE_DATE:=2024-03-01\n", latest
+    )
+    assert out == lines
+    assert notes == []
+    assert "PKG_SOURCE_VERSION" in errors[0]
 
 
 def test_apply_rejects_a_changed_hash_for_the_same_version():
