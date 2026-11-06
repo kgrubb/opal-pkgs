@@ -23,7 +23,7 @@ curl	8.23.0	3	8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5	h
 libcurl	8.23.0	4	8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5	https://curl.se/download/curl-{v}.tar.xz
 dnsmasq	2.93	4	0c00d4e5c97c8306e5fb932b348b34269c9c29a0e7df0e8e82958b407092bc19	https://thekelleys.org.uk/dnsmasq/dnsmasq-{v}.tar.xz
 chrony	4.9	3	4924c6f530105bcd5b9e9e33c48a2ae1bfd889222c8480bc41601110efc864d0	https://chrony-project.org/releases/chrony-{v}.tar.gz
-net-snmp	5.9.5.2	5	16707719f833184a4b72835dac359ae188123b06b5e42817c00790d7dc1384bf	https://downloads.sourceforge.net/project/net-snmp/net-snmp/{v}/net-snmp-{v}.tar.gz
+net-snmp	5.9.5.2	6	16707719f833184a4b72835dac359ae188123b06b5e42817c00790d7dc1384bf	https://downloads.sourceforge.net/project/net-snmp/net-snmp/{v}/net-snmp-{v}.tar.gz
 ca-bundle	2026-10-20	4	796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe	https://curl.se/ca/cacert-{v}.pem
 ca-certificates	2026-10-20	4	796f1389bfea13c0ed78f663b765baaff54a508e5483786bd6ece73c5e3e3cbe	https://curl.se/ca/cacert-{v}.pem
 libopenssl	1.1.1w	5	cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8	https://www.openssl.org/source/old/1.1.1/openssl-{v}.tar.gz
