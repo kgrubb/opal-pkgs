@@ -31,3 +31,4 @@ libopenssl-conf	1.1.1w	1	cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925
 openssl-util	1.1.1w	3	cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8	https://www.openssl.org/source/old/1.1.1/openssl-{v}.tar.gz
 libustream-openssl	2022-12-08	1	6a80b363344a2883dac6aa7e1d43b9b39c6b9af814caa4c39c0b46a580e426bd	https://github.com/openwrt/ustream-ssl/archive/9217ab46536353c7c792951b57163063f5ec7a3b.tar.gz
 zlib	1.3.1	4	9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23	https://github.com/madler/zlib/releases/download/v{v}/zlib-{v}.tar.gz
+libsqlite3	3540100	1	926ef8d3eab93fbf6e06011901273eec076b25594a4e1cdadd50c987f4f6d64e	https://www.sqlite.org/2026/sqlite-autoconf-{v}.tar.gz
