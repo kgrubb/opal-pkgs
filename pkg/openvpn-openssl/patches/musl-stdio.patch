@@ -1,0 +1,13 @@
+--- a/src/cap-ng.c
++++ b/src/cap-ng.c
+@@ -27,4 +27,9 @@
+ #include <stdarg.h>
+ #include <stdio.h>
+-#include <stdio_ext.h>
++#ifndef __GLIBC__
++#define __fsetlocking(f, mode) ((void)(f), (void)(mode), 0)
++#define FSETLOCKING_BYCALLER 0
++#else
++#include <stdio_ext.h>
++#endif
+ #include <stdlib.h>
