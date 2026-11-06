@@ -557,6 +557,18 @@ Filename: libopenssl_1.1.1w-5_mips_siflower.ipk
 Size: 1174198
 SHA256sum: 581b690bb112421f25fb2053db7aad6c8fd10cd0c573cbbfd3789757d055e142
 
+Package: libsqlite3
+Version: 3540100-1
+Depends: libc
+License: Public-Domain
+Section: libs
+Description: SQLite (v3.x) database engine
+Architecture: mips_siflower
+Installed-Size: 1672436
+Filename: libsqlite3_3540100-1_mips_siflower.ipk
+Size: 765731
+SHA256sum: 06f5567e6ab6f89c3f2b1f0f71dac70db9e0bd48aa1ba1b5613fa005cc7163f7
+
 Package: libustream-openssl
 Version: 20221208-1
 Depends: libc, libubox, libopenssl
