@@ -42,11 +42,11 @@ def check_freexian(fetch):
     return errors
 
 
-# One upstream file, two packages. The follower keeps its own release until the version changes.
+# One upstream file, extra packages. A follower keeps its own release until the version changes.
 SAME = {
-    "ca-bundle": "ca-certificates",
-    "curl": "libcurl",
-    "libopenssl": "openssl-util",
+    "ca-bundle": ("ca-certificates",),
+    "curl": ("libcurl",),
+    "libopenssl": ("openssl-util", "libopenssl-conf"),
 }
 
 
@@ -129,8 +129,7 @@ def apply(lines, fetch, latest=None):
                 continue
             out[i] = f"{name}\t{newest}\t1\t{sha}\t{url}"
             notes.append(f"- {name} {current} -> {newest}")
-            other = SAME.get(name)
-            if other:
+            for other in SAME.get(name, ()):
                 for j, follower in enumerate(out):
                     cols = (
                         follower.split("\t")
