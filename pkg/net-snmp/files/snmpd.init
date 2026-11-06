@@ -247,6 +247,16 @@ append_authtrapenable() {
 	[ "$_loctmp" -gt 0 ] && echo "$switch $_loctmp" >> $CONFIGFILE
 }
 
+# sf_gmac reports eth0 as 10Mb/s, so use the link of its switch port (cpu port 5) instead.
+snmpd_cpu_port_speed() {
+	local speed iface
+	speed=$(swconfig dev switch0 port 5 get link 2>/dev/null | sed -n 's/.*speed:\([0-9]*\)baseT.*/\1/p')
+	[ -n "$speed" ] || return 0
+	for iface in /sys/class/net/eth0 /sys/class/net/eth0.*; do
+		[ -e "$iface" ] && echo "interface ${iface##*/} 6 ${speed}000000" >> $CONFIGFILE
+	done
+}
+
 snmpd_setup_fw_rules() {
 	local net="$1"
 	local zone
@@ -303,6 +313,7 @@ start_service() {
 	append_authtrapenable authtrapenable enable authtrapenable
 	append_parm v1trapaddress host v1trapaddress
 	append_parm trapsess trapsess trapsess
+	snmpd_cpu_port_speed
 
 	procd_set_param command $PROG -Lf /dev/null -f
 	procd_set_param file $CONFIGFILE
