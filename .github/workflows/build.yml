@@ -17,6 +17,7 @@ jobs:
     env:
       UPDATE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
       PUBLISH: ${{ github.ref == 'refs/heads/main' }}
+      PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -58,10 +59,13 @@ jobs:
           path: feed
           persist-credentials: false
       - name: Compile
-        run: uv run opal-pkgs build
+        run: |
+          git fetch -q --depth=1 origin "$BUILD_BASE" || true
+          uv run opal-pkgs build
         if: steps.plan.outputs.build == 'true'
         env:
           VERSIONS_BASE: ${{ runner.temp }}/versions.base
+          BUILD_BASE: ${{ github.event.pull_request.base.sha || github.event.before || github.sha }}
       - name: Collect publish files
         if: env.PUBLISH == 'true' && steps.plan.outputs.build == 'true'
         run: |

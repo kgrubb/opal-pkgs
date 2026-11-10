@@ -385,7 +385,7 @@ def load_recipes():
     return found
 
 
-def main():
+def main(only=None):
     OUT.mkdir(exist_ok=True)
     failed = (
         set((WORK / "failed").read_text().split())
@@ -406,7 +406,9 @@ def main():
         "ROOT": ROOT,
         "PINS": PINS,
     }
-    for _name, mod in load_recipes():
+    for name, mod in load_recipes():
+        if only is not None and name not in only:
+            continue
         for key, value in shared.items():
             setattr(mod, key, value)
         mod.pack_pkg()
