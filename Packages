@@ -203,6 +203,18 @@ Filename: curl_8.23.0-3_mips_siflower.ipk
 Size: 743612
 SHA256sum: 09ac40e64b4de8974c419713eaf4e06fbcdc95dc4fa3d76b7f6288f50c9b72e7
 
+Package: curl
+Version: 8.23.0-4
+Depends: libc, ca-bundle
+License: MIT
+Section: net
+Description: command line tool for transferring data with URL syntax (mbedTLS)
+Architecture: mips_siflower
+Installed-Size: 1814972
+Filename: curl_8.23.0-4_mips_siflower.ipk
+Size: 761492
+SHA256sum: a52ccc0f5147473b31e4a762db8c20712c4f0064aec060b34c6dfb29a27e1fff
+
 Package: dnscrypt-proxy2
 Version: 2.1.20-1
 Depends: libc, ca-bundle
