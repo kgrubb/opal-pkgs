@@ -38,7 +38,9 @@ name	version	release	sha256	url
 
 `LATEST` in `pack.py` is the announcement page, a version regex, and a signature suffix: `.asc`, `.sign`, `.minisig`, or none. `pack_pkg` calls `pack` with the opkg name, the directory name, `mips_siflower` or `all`, the control fields, and the files to install.
 
-A library is only the `versions` row. The recipe that uses it calls `unpack name` and `ver name`.
+A library is only the `versions` row. The recipe that uses it calls `unpack name` and `ver name`. A recipe that unpacks another recipe's tree goes in `NEEDS` in `opal_pkgs/build.py`.
+
+CI builds only the recipes a change touches: their `pkg/<name>` directory or their `versions` row. Any other `versions` row, `bin`, the build code in `opal_pkgs`, or an `abi` fixture rebuilds all of them.
 
 `pkg/libopenssl` ships a shared library through `bin/mipsel-musl-so-cc` and `so()`.
 

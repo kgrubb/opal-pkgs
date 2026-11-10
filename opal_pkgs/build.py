@@ -39,6 +39,41 @@ def sha256(path):
     return digest.hexdigest()
 
 
+SHARED = ("bin/", "opal_pkgs/build.py", "opal_pkgs/cli.py", "opal_pkgs/pack.py")
+NEEDS = {"libustream-openssl": {"libopenssl"}, "openvpn-openssl": {"libopenssl"}}
+
+
+def changed(root, base):
+    """Recipes whose pkg/ dir or versions row differs from base. Any other change rebuilds all."""
+    recipes = {d.name for d in (root / "pkg").iterdir() if d.is_dir()}
+    if not base:
+        return recipes
+
+    def git(*args):
+        argv = ["git", "-C", str(root), *args]
+        return subprocess.run(argv, capture_output=True, text=True, check=True).stdout
+
+    try:
+        paths = git("diff", "--name-only", base, "--").split()
+        rows = git("diff", "-U0", base, "--", "versions").splitlines()
+    except subprocess.CalledProcessError:
+        return recipes
+    names = {
+        r[1:].split("\t")[0]
+        for r in rows
+        if r.startswith(("+", "-")) and not r.startswith(("+++", "---"))
+    }
+    if names - recipes:
+        return recipes
+    for path in paths:
+        parts = path.split("/")
+        if path.startswith(SHARED) or parts[0] == "pkg" and parts[2:3] == ["abi"]:
+            return recipes
+        if parts[0] == "pkg":
+            names.add(parts[1])
+    return (names | {r for r, used in NEEDS.items() if used & names}) & recipes
+
+
 def fetch_url(url, dest):
     if not url.startswith("https://"):
         raise SystemExit(f"refusing non-HTTPS URL: {url}")
@@ -149,16 +184,14 @@ def show(result):
 
 
 def run_pkg(name, script, root, env):
+    ci = env.get("GITHUB_ACTIONS") == "true"
+    print(f"::group::{name}" if ci else f"building {name}", flush=True)
     result = subprocess.run(
-        ["sh", "-c", recipe_command(script)],
-        env=env,
-        cwd=root,
-        check=False,
-        capture_output=True,
-        text=True,
+        ["sh", "-c", recipe_command(script)], env=env, cwd=root, check=False
     )
+    if ci:
+        print("::endgroup::", flush=True)
     if result.returncode != 0:
-        show(result)
         base = env.get("VERSIONS_BASE", "")
         fail(name, root, base)
         # ca-certificates is the same download as ca-bundle.
@@ -367,16 +400,18 @@ def ensure_musl(root, jobs, env, run=subprocess.run, fetch=fetch_url):
     print("built musl")
 
 
-def compile_packages(root, env):
+def compile_packages(root, env, only):
     work = root / "work"
     work.mkdir(parents=True, exist_ok=True)
     (work / "failed").write_text("")
+    needed = only.union(*(NEEDS.get(n, set()) for n in only))
     for script in sorted((root / "pkg").glob("*/build.sh")):
-        run_pkg(script.parent.name, script, root, env)
+        if script.parent.name in needed:
+            run_pkg(script.parent.name, script, root, env)
     from . import pack
 
     try:
-        pack.main()
+        pack.main(only)
     except SystemExit as err:
         if err.code not in (0, None):
             fail("pack", root, env.get("VERSIONS_BASE", ""))
@@ -407,14 +442,19 @@ def build(
     run=subprocess.run,
     fetch=fetch_url,
     versions_base="",
+    base="",
 ):
-    env = toolchain(
-        root,
-        host_uname() if uname is None else uname,
-        os.cpu_count() or 1 if jobs is None else jobs,
-        run,
-        fetch,
-    )
+    only = changed(root, base)
+    print("changed:", " ".join(sorted(only)) or "none")
+    env = {}
+    if only:
+        env = toolchain(
+            root,
+            host_uname() if uname is None else uname,
+            os.cpu_count() or 1 if jobs is None else jobs,
+            run,
+            fetch,
+        )
     if versions_base:
         env["VERSIONS_BASE"] = versions_base
-    compile_packages(root, env)
+    compile_packages(root, env, only)

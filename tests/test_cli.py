@@ -59,11 +59,10 @@ def test_src_and_ver_print_and_unpack_does_not(capsys, monkeypatch):
     assert capsys.readouterr().out.splitlines() == ["/cache/dropbear.tar.bz2", pinned]
 
 
-def test_build_passes_versions_base(monkeypatch):
+def test_build_passes_versions_base_and_build_base(monkeypatch):
     seen = []
-    monkeypatch.setattr(
-        build, "build", lambda **kwargs: seen.append(kwargs["versions_base"])
-    )
+    monkeypatch.setattr(build, "build", lambda **kwargs: seen.append(kwargs))
     monkeypatch.setenv("VERSIONS_BASE", "/tmp/versions.base")
+    monkeypatch.setenv("BUILD_BASE", "abc123")
     cli.main(["build"])
-    assert seen == ["/tmp/versions.base"]
+    assert seen == [{"versions_base": "/tmp/versions.base", "base": "abc123"}]

@@ -30,7 +30,10 @@ def main(argv=None):
         elif args.action == "ver":
             print(build.version(args.name))
         else:
-            build.build(versions_base=os.environ.get("VERSIONS_BASE", ""))
+            build.build(
+                versions_base=os.environ.get("VERSIONS_BASE", ""),
+                base=os.environ.get("BUILD_BASE", ""),
+            )
     elif args.command == "pack":
         from . import pack
 

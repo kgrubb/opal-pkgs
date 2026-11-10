@@ -1,6 +1,7 @@
 import hashlib
 import io
 import os
+import re
 import subprocess
 import tarfile
 from pathlib import Path
@@ -155,23 +156,32 @@ def test_failed_extract_leaves_no_directory(tmp_path):
     assert list((tmp_path / "work").iterdir()) == []
 
 
-def test_a_passing_recipe_prints_one_line(tmp_path, capfd):
+@pytest.mark.parametrize(
+    ("ci", "lines"),
+    [
+        ("", ["building demo", "configure noise", "built demo"]),
+        ("true", ["::group::demo", "configure noise", "::endgroup::", "built demo"]),
+    ],
+)
+def test_a_passing_recipe_streams_its_output(tmp_path, capfd, ci, lines):
     script = tmp_path / "ok.sh"
     script.write_text("echo configure noise\n")
-    status = build.run_pkg("demo", script, tmp_path, os.environ.copy())
+    env = {**os.environ, "GITHUB_ACTIONS": ci}
+    status = build.run_pkg("demo", script, tmp_path, env)
     out, err = capfd.readouterr()
     assert status == 0
-    assert out.splitlines() == ["built demo"]
+    assert out.splitlines() == lines
     assert err == ""
 
 
 def test_recipe_stops_after_a_failing_command(tmp_path, capfd):
     script = tmp_path / "bad.sh"
     script.write_text("echo start\nfalse\necho survived\n")
-    status = build.run_pkg("probe", script, tmp_path, os.environ.copy())
+    env = {**os.environ, "GITHUB_ACTIONS": ""}
+    status = build.run_pkg("probe", script, tmp_path, env)
     out, err = capfd.readouterr()
     assert status != 0
-    assert out.splitlines() == ["start"]
+    assert out.splitlines() == ["building probe", "start"]
     assert "survived" not in out and "survived" not in err
     assert (tmp_path / "work" / "failed").read_text().splitlines() == ["probe"]
     assert "build failed: probe" in err
@@ -359,7 +369,7 @@ def test_build_compiles_packages_after_the_toolchain(tmp_path, monkeypatch):
     pkg = tmp_path / "pkg" / "demo"
     pkg.mkdir(parents=True)
     (pkg / "build.sh").write_text('echo "$JOBS" > "$WORK/jobs"\n')
-    monkeypatch.setattr(pack, "main", lambda: None)
+    monkeypatch.setattr(pack, "main", lambda only: None)
     calls = []
 
     def run(argv, cwd=None, env=None, **kwargs):
@@ -378,7 +388,7 @@ def test_a_failed_package_stops_a_push_and_not_a_monday_run(tmp_path, monkeypatc
     pkg = tmp_path / "pkg" / "demo"
     pkg.mkdir(parents=True)
     (pkg / "build.sh").write_text("exit 1\n")
-    monkeypatch.setattr(pack, "main", lambda: None)
+    monkeypatch.setattr(pack, "main", lambda only: None)
 
     with pytest.raises(SystemExit):
         build.build(
@@ -402,10 +412,117 @@ def test_pack_failure_is_recorded(tmp_path, monkeypatch):
     (tmp_path / "pkg").mkdir()
     (tmp_path / "work").mkdir()
 
-    def boom():
+    def boom(only):
         raise SystemExit("pack broke")
 
     monkeypatch.setattr(pack, "main", boom)
     with pytest.raises(SystemExit):
-        build.compile_packages(tmp_path, {})
+        build.compile_packages(tmp_path, {}, set())
     assert (tmp_path / "work" / "failed").read_text().splitlines() == ["pack"]
+
+
+def git(root, *args):
+    subprocess.run(
+        ["git", "-C", str(root), "-c", "user.name=t", "-c", "user.email=t", *args],
+        check=True,
+        capture_output=True,
+    )
+
+
+VERSIONS = "a\t1\t1\taa\tu\nb\t1\t1\tbb\tu\nlib\t1\t-\tcc\tu\n"
+
+
+def repo(root):
+    for name in ("a", "b"):
+        (root / "pkg" / name).mkdir(parents=True)
+        (root / "pkg" / name / "build.sh").write_text("true\n")
+    (root / "bin").mkdir()
+    (root / "bin" / "cc").write_text("cc\n")
+    (root / "versions").write_text(VERSIONS)
+    git(root, "init", "-q")
+    git(root, "add", ".")
+    git(root, "commit", "-qm", "base")
+
+
+def edit(path, text):
+    return lambda root: (root / path).write_text(text)
+
+
+@pytest.mark.parametrize(
+    ("change", "base", "expected"),
+    [
+        (edit("bin/cc", "cc\n"), "HEAD", set()),
+        (edit("pkg/a/build.sh", "false\n"), "HEAD", {"a"}),
+        (edit("pkg/b/build.sh", "false\n"), "HEAD", {"a", "b"}),
+        (edit("README.md", "docs\n"), "HEAD", set()),
+        (edit("bin/cc", "cc2\n"), "HEAD", {"a", "b"}),
+        (edit("pkg/a/abi", "x\n"), "HEAD", {"a", "b"}),
+        (edit("versions", VERSIONS.replace("a\t1", "a\t2")), "HEAD", {"a"}),
+        (edit("versions", VERSIONS.replace("lib\t1", "lib\t2")), "HEAD", {"a", "b"}),
+        (edit("bin/cc", "cc\n"), "", {"a", "b"}),
+        (edit("bin/cc", "cc\n"), "0" * 40, {"a", "b"}),
+    ],
+)
+def test_changed(tmp_path, monkeypatch, change, base, expected):
+    repo(tmp_path)
+    monkeypatch.setattr(build, "NEEDS", {"a": {"b"}})
+    change(tmp_path)
+    git(tmp_path, "add", ".")
+    assert build.changed(tmp_path, base) == expected
+
+
+def test_needs_matches_the_recipes_each_script_unpacks():
+    root = Path(__file__).parents[1]
+    recipes = {d.name for d in (root / "pkg").iterdir() if d.is_dir()}
+    unpacked = {}
+    for script in (root / "pkg").glob("*/build.sh"):
+        lines = [line for line in script.read_text().splitlines() if "unpack" in line]
+        words = set(re.findall(r"[\w.+-]+", "\n".join(lines)))
+        used = words & recipes - {script.parent.name}
+        if used:
+            unpacked[script.parent.name] = used
+    assert unpacked == build.NEEDS
+
+
+def test_a_needed_recipe_compiles_without_packing(tmp_path, monkeypatch):
+    for name in ("app", "lib", "zzz"):
+        (tmp_path / "pkg" / name).mkdir(parents=True)
+        (tmp_path / "pkg" / name / "build.sh").write_text(f'touch "$WORK/{name}"\n')
+    monkeypatch.setattr(build, "NEEDS", {"app": {"lib"}})
+    packed = []
+    monkeypatch.setattr(pack, "main", packed.append)
+
+    env = {**os.environ, "WORK": str(tmp_path / "work")}
+    build.compile_packages(tmp_path, env, {"app"})
+    assert sorted(p.name for p in (tmp_path / "work").glob("[a-z]*")) == [
+        "app",
+        "failed",
+        "lib",
+    ]
+    assert packed == [{"app"}]
+
+
+def test_nothing_changed_skips_the_toolchain(tmp_path, monkeypatch, capsys):
+    repo(tmp_path)
+    monkeypatch.setattr(pack, "main", lambda only: None)
+
+    def offline(*args, **kwargs):
+        raise AssertionError("toolchain ran")
+
+    build.build(tmp_path, run=offline, fetch=offline, base="HEAD")
+    assert "changed: none" in capsys.readouterr().out
+    assert (tmp_path / "work" / "failed").read_text() == ""
+
+
+def test_main_packs_only_the_selected_recipes(monkeypatch, tmp_path):
+    monkeypatch.setattr(pack, "WORK", tmp_path)
+    monkeypatch.setattr(pack, "OUT", tmp_path / "out")
+    seen = []
+
+    class Mod:
+        def __init__(self, name):
+            self.pack_pkg = lambda: seen.append(name)
+
+    monkeypatch.setattr(pack, "load_recipes", lambda: [(n, Mod(n)) for n in "abc"])
+    pack.main({"b"})
+    assert seen == ["b"]
