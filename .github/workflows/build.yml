@@ -17,6 +17,8 @@ jobs:
     env:
       UPDATE: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
       PUBLISH: ${{ github.ref == 'refs/heads/main' }}
+      # Without this, python holds every line until the step ends.
+      PYTHONUNBUFFERED: "1"
     steps:
       - uses: actions/checkout@v7.0.1
         with:

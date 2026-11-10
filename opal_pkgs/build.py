@@ -149,16 +149,15 @@ def show(result):
 
 
 def run_pkg(name, script, root, env):
+    # The recipe writes straight to our stdout, so flush first to keep lines in order.
+    ci = env.get("GITHUB_ACTIONS") == "true"
+    print(f"::group::{name}" if ci else f"building {name}", flush=True)
     result = subprocess.run(
-        ["sh", "-c", recipe_command(script)],
-        env=env,
-        cwd=root,
-        check=False,
-        capture_output=True,
-        text=True,
+        ["sh", "-c", recipe_command(script)], env=env, cwd=root, check=False
     )
+    if ci:
+        print("::endgroup::", flush=True)
     if result.returncode != 0:
-        show(result)
         base = env.get("VERSIONS_BASE", "")
         fail(name, root, base)
         # ca-certificates is the same download as ca-bundle.

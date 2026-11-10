@@ -155,23 +155,38 @@ def test_failed_extract_leaves_no_directory(tmp_path):
     assert list((tmp_path / "work").iterdir()) == []
 
 
-def test_a_passing_recipe_prints_one_line(tmp_path, capfd):
+def test_a_passing_recipe_streams_its_output(tmp_path, capfd):
     script = tmp_path / "ok.sh"
     script.write_text("echo configure noise\n")
-    status = build.run_pkg("demo", script, tmp_path, os.environ.copy())
+    env = {**os.environ, "GITHUB_ACTIONS": ""}
+    status = build.run_pkg("demo", script, tmp_path, env)
     out, err = capfd.readouterr()
     assert status == 0
-    assert out.splitlines() == ["built demo"]
+    assert out.splitlines() == ["building demo", "configure noise", "built demo"]
     assert err == ""
+
+
+def test_ci_folds_each_recipe_into_a_group(tmp_path, capfd):
+    script = tmp_path / "ok.sh"
+    script.write_text("echo configure noise\n")
+    env = {**os.environ, "GITHUB_ACTIONS": "true"}
+    build.run_pkg("demo", script, tmp_path, env)
+    assert capfd.readouterr().out.splitlines() == [
+        "::group::demo",
+        "configure noise",
+        "::endgroup::",
+        "built demo",
+    ]
 
 
 def test_recipe_stops_after_a_failing_command(tmp_path, capfd):
     script = tmp_path / "bad.sh"
     script.write_text("echo start\nfalse\necho survived\n")
-    status = build.run_pkg("probe", script, tmp_path, os.environ.copy())
+    env = {**os.environ, "GITHUB_ACTIONS": ""}
+    status = build.run_pkg("probe", script, tmp_path, env)
     out, err = capfd.readouterr()
     assert status != 0
-    assert out.splitlines() == ["start"]
+    assert out.splitlines() == ["building probe", "start"]
     assert "survived" not in out and "survived" not in err
     assert (tmp_path / "work" / "failed").read_text().splitlines() == ["probe"]
     assert "build failed: probe" in err
