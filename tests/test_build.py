@@ -436,6 +436,7 @@ def repo(root):
     for name in ("a", "b"):
         (root / "pkg" / name).mkdir(parents=True)
         (root / "pkg" / name / "build.sh").write_text("true\n")
+    (root / "pkg" / "a" / "needs").write_text("b\n")
     (root / "bin").mkdir()
     (root / "bin" / "cc").write_text("cc\n")
     (root / "versions").write_text(VERSIONS)
@@ -454,6 +455,7 @@ def edit(path, text):
         (edit("bin/cc", "cc\n"), "HEAD", set()),
         (edit("pkg/a/build.sh", "false\n"), "HEAD", {"a"}),
         (edit("pkg/b/build.sh", "false\n"), "HEAD", {"a", "b"}),
+        (edit("pkg/a/needs", "b\nc\n"), "HEAD", {"a"}),
         (edit("README.md", "docs\n"), "HEAD", set()),
         (edit("bin/cc", "cc2\n"), "HEAD", {"a", "b"}),
         (edit("pkg/a/abi", "x\n"), "HEAD", {"a", "b"}),
@@ -463,9 +465,8 @@ def edit(path, text):
         (edit("bin/cc", "cc\n"), "0" * 40, {"a", "b"}),
     ],
 )
-def test_changed(tmp_path, monkeypatch, change, base, expected):
+def test_changed(tmp_path, change, base, expected):
     repo(tmp_path)
-    monkeypatch.setattr(build, "NEEDS", {"a": {"b"}})
     change(tmp_path)
     git(tmp_path, "add", ".")
     assert build.changed(tmp_path, base) == expected
@@ -481,14 +482,16 @@ def test_needs_matches_the_recipes_each_script_unpacks():
         used = words & recipes - {script.parent.name}
         if used:
             unpacked[script.parent.name] = used
-    assert unpacked == build.NEEDS
+    assert unpacked == {
+        r: build.needs(root, r) for r in recipes if build.needs(root, r)
+    }
 
 
 def test_a_needed_recipe_compiles_without_packing(tmp_path, monkeypatch):
     for name in ("app", "lib", "zzz"):
         (tmp_path / "pkg" / name).mkdir(parents=True)
         (tmp_path / "pkg" / name / "build.sh").write_text(f'touch "$WORK/{name}"\n')
-    monkeypatch.setattr(build, "NEEDS", {"app": {"lib"}})
+    (tmp_path / "pkg" / "app" / "needs").write_text("lib\n")
     packed = []
     monkeypatch.setattr(pack, "main", packed.append)
 

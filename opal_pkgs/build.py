@@ -40,7 +40,12 @@ def sha256(path):
 
 
 SHARED = ("bin/", "opal_pkgs/build.py", "opal_pkgs/cli.py", "opal_pkgs/pack.py")
-NEEDS = {"libustream-openssl": {"libopenssl"}, "openvpn-openssl": {"libopenssl"}}
+
+
+def needs(root, name):
+    """Other recipes whose tree this one unpacks, one per line in pkg/<name>/needs."""
+    path = root / "pkg" / name / "needs"
+    return set(path.read_text().split()) if path.is_file() else set()
 
 
 def changed(root, base):
@@ -71,7 +76,7 @@ def changed(root, base):
             return recipes
         if parts[0] == "pkg":
             names.add(parts[1])
-    return (names | {r for r, used in NEEDS.items() if used & names}) & recipes
+    return (names | {r for r in recipes if needs(root, r) & names}) & recipes
 
 
 def fetch_url(url, dest):
@@ -404,7 +409,7 @@ def compile_packages(root, env, only):
     work = root / "work"
     work.mkdir(parents=True, exist_ok=True)
     (work / "failed").write_text("")
-    needed = only.union(*(NEEDS.get(n, set()) for n in only))
+    needed = only.union(*(needs(root, n) for n in only))
     for script in sorted((root / "pkg").glob("*/build.sh")):
         if script.parent.name in needed:
             run_pkg(script.parent.name, script, root, env)
