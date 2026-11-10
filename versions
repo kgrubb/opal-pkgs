@@ -19,7 +19,7 @@ sudo	1.9.17p2	4	4a38a1ab3adb1199257edc2a7c4a2bd714665eb605b04368843b06dada2cfcfb
 dnscrypt-proxy	2.1.20	5	256776061040d726f13ab8c3d50d2849c92c91d9dae3342fef2e97f4b16a183f	https://github.com/DNSCrypt/dnscrypt-proxy/releases/download/{v}/dnscrypt-proxy-linux_mipsle-{v}.tar.gz
 wireguard-tools	1.0.20260223	3	859f8af03702db5e5c43f8ece77f5ebef40a2f4627c3e03997a031d4940ea9bc	https://github.com/WireGuard/wireguard-tools/archive/refs/tags/v{v}.tar.gz
 softflowd	1.1.1	3	a6882e59931e5880901f8ee28d78b082cb3000ad8d28af35c13f2b528edbb2c9	https://github.com/irino/softflowd/archive/refs/tags/softflowd-v{v}.tar.gz
-curl	8.23.0	3	8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5	https://curl.se/download/curl-{v}.tar.xz
+curl	8.23.0	4	8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5	https://curl.se/download/curl-{v}.tar.xz
 libcurl	8.23.0	4	8dadd7d2536a314f982ad05a651b713f426bf7d02cc2c76cffb9796f2218e6c5	https://curl.se/download/curl-{v}.tar.xz
 dnsmasq	2.93	4	0c00d4e5c97c8306e5fb932b348b34269c9c29a0e7df0e8e82958b407092bc19	https://thekelleys.org.uk/dnsmasq/dnsmasq-{v}.tar.xz
 chrony	4.9	3	4924c6f530105bcd5b9e9e33c48a2ae1bfd889222c8480bc41601110efc864d0	https://chrony-project.org/releases/chrony-{v}.tar.gz
