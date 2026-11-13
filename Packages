@@ -837,6 +837,18 @@ Filename: sudo_1.9.17p2-4_mips_siflower.ipk
 Size: 846813
 SHA256sum: 694fd12f103b4ab130dad5d1ad3d6a388e26f99b97a5c083ce6fc9cea2960553
 
+Package: tailscale
+Version: 1.104.5-1
+Depends: libc, ca-bundle, kmod-tun
+License: BSD-3-Clause
+Section: net
+Description: Tailscale client and subnet router
+Architecture: mips_siflower
+Installed-Size: 16845071
+Filename: tailscale_1.104.5-1_mips_siflower.ipk
+Size: 5656206
+SHA256sum: b55ee2c58efc2ac768758ebda490c4d1b71f8b3335068700393d3f55fae350b2
+
 Package: wireguard-tools
 Version: 1.0.20260223-1
 Depends: libc, kmod-wireguard
