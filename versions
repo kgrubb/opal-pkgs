@@ -36,3 +36,4 @@ lzo	2.10	-	c0f892943208266f9b6543b3ae308fab6284c5c90e627931446fb49b4221a072	http
 lz4	1.11.0	-	247e5fa64da5f7b75ee3dd3bed484076396c9ebe8254d9ccf693eb62800c5e26	https://github.com/lz4/lz4/releases/download/v{v}/lz4-{v}.tar.gz
 libcap-ng	0.9.6	-	399040138e0ca62fa2bcabd63da9af4431a246ef7a654561a0ca3cb00010a539	https://github.com/stevegrubb/libcap-ng/archive/refs/tags/v{v}.tar.gz
 openvpn-openssl	2.7.9	1	c42a6ed892ddfe2d6e3317a5040f19bec5827564affb2fe3f2b3904a94daacb1	https://build.openvpn.net/downloads/releases/openvpn-{v}.tar.gz
+tailscale	1.104.5	1	0704fa4ce8624463ce421f45f0d20ae8d710b9ee7354eaa1f4a772e9a3cd4ded	https://github.com/tailscale/tailscale/archive/refs/tags/v{v}.tar.gz
