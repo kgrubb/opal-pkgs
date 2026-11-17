@@ -4,18 +4,18 @@
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64)
     go_host=linux-amd64
-    go_sha=65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40
+    go_sha=7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840
     ;;
   Darwin-arm64)
     go_host=darwin-arm64
-    go_sha=dd3908cf20959d798c1e06ebe5b72213f0505ce01373b40ce3110975a6cd99c2
+    go_sha=91a44a2b8a716600ad94a4f143e156116620db8828086a6e3602291be9bd0bb4
     ;;
   *)
     echo "tailscale: no Go toolchain for $(uname -s)-$(uname -m)" >&2
     exit 1
     ;;
 esac
-go_ver=1.27.3
+go_ver=1.27.4
 go="$WORK/go-$go_ver-$go_host/bin/go"
 if [ ! -x "$go" ]; then
   mkdir -p "$ROOT/.cache"
